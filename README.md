@@ -10,28 +10,68 @@ Enterprise Support MemoryAgent on Qwen Cloud
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
 
-Never Ask Twice is a production-shaped B2B support memory agent that remembers customer context across sessions, retrieves only the memories that matter, forgets stale facts safely, and proves improvement with a live memory ON/OFF evaluation.
+Never Ask Twice is a production-shaped B2B support memory agent that remembers customer context across sessions, retrieves only the memories that matter, forgets stale facts safely, and proves improvement with a deterministic memory ON/OFF evaluation harness plus a live Qwen-backed API path.
 
-The demo agent is **Nat** — short for Never Ask Twice. Nat remembers what customers already told support: their SLA tier, product configuration, escalation preference, open issues, and promised follow-ups. When the customer returns days later, Nat does not restart from zero.
+The demo agent is **Nat**. Nat is powered by **NATE** — the Never Ask Twice Engine — a scoped memory layer that turns support conversations into durable, auditable customer context.
 
-## The result
+Built for the Qwen Cloud Global AI Hackathon — Track: MemoryAgent.
 
-Re-ask rate: **0.00** with memory  
-Re-ask rate: **1.00** without memory
+## Status
 
-The improvement is not asserted in the README. It is produced by the evaluation harness:
+| Area | Status | Notes |
+|---|---|---|
+| Public clean-room repo | Done | Synthetic data only; boundary scan included. |
+| Local Postgres + pgvector setup | Done | `docker compose up -d` binds Postgres on `localhost:5433`. |
+| Deterministic eval harness | Done | `pnpm eval` prints memory ON/OFF re-ask, recall, and hallucination metrics. |
+| Memory service | Done | Working, episodic, semantic, forgetting, and budgeted recall paths are implemented. |
+| MCP stdio surface | Done | Four memory tools are exposed through `pnpm mcp:list-tools`. |
+| Qwen-backed live path | In progress | Requires `DASHSCOPE_API_KEY`; local-safe mode runs without it. |
+| Alibaba Function Compute deployment | In progress | `s.yaml` and deployment instructions exist; final live proof is still required. |
+| Demo video | Pending | Should use the frozen Acme scenario and the eval output line. |
+
+## Judge path
+
+1. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
+2. Run the ablation:
+   ```bash
+   pnpm eval
+   ```
+3. Inspect the forgetting behavior: [`docs/forgetting-policy.md`](docs/forgetting-policy.md).
+4. Read the system architecture: [`docs/architecture.md`](docs/architecture.md).
+5. List MCP tools:
+   ```bash
+   pnpm build
+   pnpm mcp:list-tools
+   ```
+6. Review the deployment instructions and proof placeholder: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).
+
+## The measurable result
+
+Run:
 
 ```bash
 pnpm eval
 ```
 
-Built for the Qwen Cloud Global AI Hackathon — Track: MemoryAgent.
+Expected deterministic fixture output:
+
+```text
+memory-on re-ask rate: 0.00
+memory-on recall accuracy: 1.00
+memory-on hallucination count: 0
+memory-off re-ask rate: 1.00
+memory-off recall accuracy: 0.00
+memory-off hallucination count: 0
+re-ask rate: 0.00 (memory) vs 1.00 (no-memory)
+```
+
+The evaluation path is intentionally deterministic for reproducible scoring. It uses fixed synthetic fixtures and a fake Qwen client. The live API path uses Qwen Cloud when `DASHSCOPE_API_KEY` is configured.
 
 ## What makes it a MemoryAgent
 
 Never Ask Twice implements explicit memory tiers:
 
-- **Working memory** — current-session context.
+- **Working memory** — current-session context usable before session-close distillation.
 - **Episodic memory** — raw support events with Qwen embeddings and provenance.
 - **Semantic memory** — distilled customer facts with confidence, validity windows, and source links.
 - **Forgetting policy** — TTL expiry, supersession, stale-memory exclusion, and audit-safe provenance.
@@ -42,20 +82,25 @@ This is not transcript logging. It is structured memory with retrieval disciplin
 
 ## Architecture
 
+```text
+Customer chat / MCP
+        |
+        v
+Hono API on Alibaba Function Compute
+        |
+        v
+MemoryService
+  |-- working memory: current-session facts
+  |-- episodic memory: turn events + Qwen embeddings
+  |-- semantic memory: distilled durable facts
+  |-- forgetting: TTL + supersession + scoped recall
+        |
+        +--> Qwen Cloud via DashScope-compatible OpenAI API
+        +--> Postgres + pgvector
+        +--> MCP stdio tools
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐
-│  Customer   │────▶│  Hono API   │────▶│  Memory Service             │
-│  chat / MCP │     │  on FC      │     │  (working, episodic,        │
-└─────────────┘     └─────────────┘     │   semantic, forgetting)     │
-                                        └─────────────┬───────────────┘
-                                                      │
-                              ┌───────────────────────┼───────────────────────┐
-                              ▼                       ▼                       ▼
-                        ┌───────────┐         ┌───────────┐         ┌───────────┐
-                        │ Qwen Cloud │         │ Postgres  │         │  MCP stdio │
-                        │ DashScope  │         │ + pgvector │         │  4 tools   │
-                        └───────────┘         └───────────┘         └───────────┘
-```
+
+More detail: [`docs/architecture.md`](docs/architecture.md).
 
 ## Getting started
 
@@ -73,9 +118,9 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` and set your `DASHSCOPE_API_KEY` from [DashScope](https://dashscope.aliyun.com). The example is pre-filled for local Postgres on port 5433.
+Edit `.env` and set your `DASHSCOPE_API_KEY` from DashScope for live Qwen-backed embeddings, distillation, and adjudication. The example is pre-filled for local Postgres on port 5433.
 
-```
+```env
 DATABASE_URL=postgresql://neverasktwice:neverasktwice@localhost:5433/neverasktwice
 DASHSCOPE_API_KEY=your-key-here
 QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
@@ -84,6 +129,8 @@ QWEN_EMBEDDING_MODEL=text-embedding-v3
 QWEN_EMBEDDING_DIM=1024
 MEMORY_TOKEN_BUDGET=1200
 ```
+
+Without `DASHSCOPE_API_KEY`, the API boots in local-safe mode. Local-safe mode uses zero-vector embeddings and empty distillation responses so the server can run without secrets; it does not perform real Qwen work. Use `pnpm eval` for deterministic local scoring without a key.
 
 ### 3. Start Postgres
 
@@ -105,18 +152,6 @@ pnpm migrate
 pnpm eval
 ```
 
-Expected output:
-
-```
-memory-on re-ask rate: 0.00
-memory-on recall accuracy: 1.00
-memory-on hallucination count: 0
-memory-off re-ask rate: 1.00
-memory-off recall accuracy: 0.00
-memory-off hallucination count: 0
-re-ask rate: 0.00 (memory) vs 1.00 (no-memory)
-```
-
 ### 6. Run the boundary scan
 
 ```bash
@@ -131,10 +166,10 @@ pnpm dev
 
 The API will be available at `http://localhost:3000` with endpoints:
 
-- `GET /health` — health check
-- `POST /turn` — append a customer/agent turn
-- `POST /sessions/:id/close` — close a session and distill episodic → semantic memory
-- `POST /recall` — recall a bounded memory bundle
+- `GET /health` — health and capability status.
+- `POST /turn` — append a customer/agent turn.
+- `POST /sessions/:id/close` — close a session and distill episodic memory into semantic memory.
+- `POST /recall` — recall a bounded memory bundle.
 
 ### 8. Run the MCP server
 
@@ -147,15 +182,18 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 
 ## Project structure
 
-- `apps/api` — Hono API and demo surface
-- `packages/contracts` — Zod schemas and shared types
-- `packages/db` — Drizzle schema and migrations
-- `packages/memory` — memory services and retrieval logic
-- `packages/eval` — eval harness
-- `packages/mcp` — stdio MCP surface
-- `src` — canonical implementation shared by the API and MCP
-- `eval` — frozen three-session scenario, ground truth, and expected output
-- `scripts` — boundary scan, migration, demo script check
+- `apps/api` — Hono API, local server, and Function Compute handler.
+- `src/agent` — deterministic support-agent policy used by the eval harness.
+- `src/contracts.ts` — memory predicate enum, Zod contracts, and shared types.
+- `src/db` — Drizzle schema and SQL migration string.
+- `src/memory` — memory service, stores, retrieval, supersession, and forgetting behavior.
+- `src/mcp` — stdio MCP surface over the shared memory service.
+- `src/qwen` — single Qwen Cloud client module.
+- `src/testing` — deterministic fake Qwen client for the eval harness.
+- `eval` — frozen three-session scenario, ground truth, expected output, and runner.
+- `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
+- `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
+- `deploy` — Alibaba Function Compute deployment instructions and proof placeholder.
 
 ## Key commands
 
@@ -165,11 +203,17 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 | `pnpm build` | Build the project |
 | `pnpm lint` | Run TypeScript type check |
 | `pnpm test` | Run the test suite |
-| `pnpm eval` | Run the memory ON/OFF eval harness |
+| `pnpm eval` | Run the deterministic memory ON/OFF eval harness |
 | `pnpm migrate` | Run database migrations |
 | `pnpm boundary-scan` | Run the clean-room boundary scan |
 | `pnpm mcp:list-tools` | List the MCP tools |
 | `pnpm demo:script-check` | Verify demo fixtures are aligned |
+
+## Security and clean-room boundary
+
+Never Ask Twice uses synthetic data only. Do not commit real customer data, secrets, `.env` files, or private platform identifiers. The repository includes a boundary scan to fail on known forbidden tokens and a local-safe mode so judges can run the server without secrets.
+
+See [`SECURITY.md`](SECURITY.md).
 
 ## License
 

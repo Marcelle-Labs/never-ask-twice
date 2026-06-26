@@ -36,6 +36,7 @@ allowed_secret_files=(
 
 while IFS= read -r file; do
   case "$file" in
+    ./.windsurf/mcp.json) continue ;;
     ./.git/*) continue ;;
     ./node_modules/*) continue ;;
     ./dist/*) continue ;;
@@ -48,7 +49,7 @@ while IFS= read -r file; do
   fi
 
   for pattern in "${forbidden_patterns[@]}"; do
-    if grep -Iq . "$file" && grep -Fq "$pattern" "$file"; then
+    if grep -Iq . "$file" && grep -Fiq "$pattern" "$file"; then
       echo "boundary-scan: forbidden token [$pattern] in $file"
       exit 1
     fi

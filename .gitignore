@@ -3,7 +3,7 @@ dist
 coverage
 .env
 .DS_Store
-pnpm-lock.yaml
 .serverless
 .fc
-.windsurf/
+.windsurf/mcp.json
+.windsurf/rules/.DS_Store

@@ -9,6 +9,8 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -16,9 +18,12 @@ jobs:
           version: 9.12.3
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm boundary-scan
       - run: pnpm lint
       - run: pnpm test
+      - run: pnpm build
+      - run: pnpm eval
+      - run: pnpm mcp:list-tools

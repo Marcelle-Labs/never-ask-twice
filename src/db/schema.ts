@@ -24,9 +24,9 @@ export const customers = pgTable("customers", {
 });
 
 export const sessions = pgTable("sessions", {
-  sessionId: uuid("session_id").defaultRandom().primaryKey(),
-  accountId: uuid("account_id").notNull().references(() => accounts.accountId),
-  customerId: uuid("customer_id").notNull().references(() => customers.customerId),
+  sessionId: text("session_id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  customerId: text("customer_id").notNull(),
   openedAt: timestamp("opened_at", { withTimezone: true }).defaultNow().notNull(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   distilledAt: timestamp("distilled_at", { withTimezone: true }),
@@ -37,9 +37,9 @@ export const episodicEvents = pgTable(
   "episodic_events",
   {
     eventId: uuid("event_id").defaultRandom().primaryKey(),
-    accountId: uuid("account_id").notNull().references(() => accounts.accountId),
-    customerId: uuid("customer_id").notNull().references(() => customers.customerId),
-    sessionId: uuid("session_id").notNull().references(() => sessions.sessionId),
+    accountId: text("account_id").notNull(),
+    customerId: text("customer_id").notNull(),
+    sessionId: text("session_id").notNull().references(() => sessions.sessionId),
     role: text("role").notNull(),
     message: text("message").notNull(),
     ts: timestamp("ts", { withTimezone: true }).defaultNow().notNull(),
@@ -53,9 +53,9 @@ export const episodicEvents = pgTable(
 
 export const semanticFacts = pgTable("semantic_facts", {
   factId: uuid("fact_id").defaultRandom().primaryKey(),
-  accountId: uuid("account_id").notNull().references(() => accounts.accountId),
-  customerId: uuid("customer_id").notNull().references(() => customers.customerId),
-  sessionId: uuid("session_id").references(() => sessions.sessionId),
+  accountId: text("account_id").notNull(),
+  customerId: text("customer_id").notNull(),
+  sessionId: text("session_id").references(() => sessions.sessionId),
   subject: text("subject").notNull(),
   predicate: text("predicate").notNull(),
   predicateClass: text("predicate_class").notNull(),

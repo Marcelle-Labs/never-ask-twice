@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-  session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id uuid NOT NULL REFERENCES accounts(account_id),
-  customer_id uuid NOT NULL REFERENCES customers(customer_id),
+  session_id text PRIMARY KEY,
+  account_id text NOT NULL,
+  customer_id text NOT NULL,
   opened_at timestamptz NOT NULL DEFAULT now(),
   closed_at timestamptz NULL,
   distilled_at timestamptz NULL,
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS episodic_events (
   event_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id uuid NOT NULL REFERENCES accounts(account_id),
-  customer_id uuid NOT NULL REFERENCES customers(customer_id),
-  session_id uuid NOT NULL REFERENCES sessions(session_id),
+  account_id text NOT NULL,
+  customer_id text NOT NULL,
+  session_id text NOT NULL REFERENCES sessions(session_id),
   role text NOT NULL,
   message text NOT NULL,
   ts timestamptz NOT NULL DEFAULT now(),
@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS episodic_events (
 
 CREATE TABLE IF NOT EXISTS semantic_facts (
   fact_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id uuid NOT NULL REFERENCES accounts(account_id),
-  customer_id uuid NOT NULL REFERENCES customers(customer_id),
-  session_id uuid NULL REFERENCES sessions(session_id),
+  account_id text NOT NULL,
+  customer_id text NOT NULL,
+  session_id text NULL REFERENCES sessions(session_id),
   subject text NOT NULL,
   predicate text NOT NULL,
   predicate_class text NOT NULL,

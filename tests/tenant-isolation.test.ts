@@ -20,6 +20,7 @@ describe("tenant-isolation", () => {
         object: "email",
         confidence: 0.9,
         observedAt: new Date(),
+        metadata: {},
       });
       
       // Add working fact for tenant 2
@@ -31,6 +32,7 @@ describe("tenant-isolation", () => {
         object: "phone",
         confidence: 0.9,
         observedAt: new Date(),
+        metadata: {},
       });
       
       // Tenant 1 should only see their own working facts
@@ -60,6 +62,7 @@ describe("tenant-isolation", () => {
         object: "email",
         confidence: 0.9,
         observedAt: new Date(),
+        metadata: {},
       });
       
       // Add working fact for session 2
@@ -71,6 +74,7 @@ describe("tenant-isolation", () => {
         object: "phone",
         confidence: 0.9,
         observedAt: new Date(),
+        metadata: {},
       });
       
       // Session 1 should only see its own working facts
@@ -102,6 +106,7 @@ describe("tenant-isolation", () => {
         object: "email",
         confidence: 0.9,
         observedAt: new Date(),
+        metadata: {},
       });
       
       // Add working fact to store 2
@@ -113,6 +118,7 @@ describe("tenant-isolation", () => {
         object: "phone",
         confidence: 0.9,
         observedAt: new Date(),
+        metadata: {},
       });
       
       // Store 1 should only have its own facts
