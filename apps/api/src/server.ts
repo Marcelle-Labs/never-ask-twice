@@ -100,6 +100,14 @@ app.post("/turn", async (c) => {
   // Auto-create session if it doesn't exist
   await store.createSession({ accountId, customerId, sessionId });
 
+  // Validate session ownership if sessionId was provided by caller
+  if (parsed.data.sessionId) {
+    const session = await store.getSession(sessionId);
+    if (session && (session.accountId !== accountId || session.customerId !== customerId)) {
+      return c.json({ error: "Session not found" }, 404);
+    }
+  }
+
   try {
     const event = await memory.appendTurn({ accountId, customerId, sessionId, role, message, ts });
     return c.json({ ok: true, sessionId, eventId: event.eventId }, 201);
@@ -138,9 +146,14 @@ app.post("/sessions/:id/close", async (c) => {
   const { accountId, customerId } = parsed.data;
   const closedAt = parsed.data.closedAt ? new Date(parsed.data.closedAt) : new Date();
 
-  // Verify session exists
+  // Verify session exists and belongs to the tenant
   const session = await store.getSession(sessionId);
   if (!session) {
+    return c.json({ error: `Session ${sessionId} not found` }, 404);
+  }
+
+  // Validate session ownership
+  if (session.accountId !== accountId || session.customerId !== customerId) {
     return c.json({ error: `Session ${sessionId} not found` }, 404);
   }
 
