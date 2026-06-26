@@ -17,6 +17,10 @@ export class InMemoryMemoryStore implements MemoryStore {
   readonly workingFacts: WorkingMemoryRecord[] = [];
 
   async createSession(record: { sessionId: string; accountId: string; customerId: string }) {
+    const existing = this.sessions.get(record.sessionId);
+    if (existing) {
+      return existing;
+    }
     const session: SessionRecord = {
       ...record,
       openedAt: new Date(),

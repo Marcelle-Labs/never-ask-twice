@@ -56,11 +56,32 @@ function recencyScore(date: Date, now: Date) {
   return 1 / (1 + ageHours);
 }
 
+export class SessionNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SessionNotFoundError";
+  }
+}
+
 export class MemoryService {
   constructor(
     readonly store: MemoryStore,
     readonly qwenClient: QwenClient,
   ) {}
+
+  private async requireSessionOwnership(
+    sessionId: string,
+    accountId: string,
+    customerId: string,
+  ) {
+    const session = await this.store.getSession(sessionId);
+    if (!session) {
+      throw new SessionNotFoundError(`Session ${sessionId} not found`);
+    }
+    if (session.accountId !== accountId || session.customerId !== customerId) {
+      throw new SessionNotFoundError(`Session ${sessionId} not found`);
+    }
+  }
 
   async createSession(input: { accountId: string; customerId: string; sessionId?: string }) {
     const sessionId = input.sessionId ?? randomUUID();
@@ -73,6 +94,7 @@ export class MemoryService {
 
   async appendTurn(input: TurnInput) {
     const turn = TurnInputSchema.parse(input);
+    await this.requireSessionOwnership(turn.sessionId, turn.accountId, turn.customerId);
     const embedding = await this.qwenClient.embed(turn.message);
     return await this.store.appendEvent({
       accountId: turn.accountId,
@@ -109,10 +131,8 @@ export class MemoryService {
     customerId: string;
     closedAt: Date;
   }) {
-    const session = await this.store.getSession(input.sessionId);
-    if (!session) {
-      throw new Error(`Unknown session: ${input.sessionId}`);
-    }
+    await this.requireSessionOwnership(input.sessionId, input.accountId, input.customerId);
+    const session = (await this.store.getSession(input.sessionId))!;
 
     if (session.distilledAt) {
       return {
@@ -191,6 +211,55 @@ export class MemoryService {
 
     const finalSession = (await this.store.getSession(input.sessionId))!;
     return { session: finalSession, facts: insertedFacts };
+  }
+
+  async forget(input: {
+    accountId: string;
+    customerId: string;
+    factId?: string;
+    predicateClass?: string;
+  }) {
+    const now = new Date();
+    const factsToUpdate: SemanticFactRecord[] = [];
+
+    if (input.factId) {
+      const fact = await this.store.getFactById(input.factId);
+      if (
+        fact &&
+        fact.accountId === input.accountId &&
+        fact.customerId === input.customerId &&
+        fact.validTo === null
+      ) {
+        factsToUpdate.push(fact);
+      }
+    }
+
+    if (input.predicateClass) {
+      const facts = await this.store.getFactsByPredicateClass(input.predicateClass);
+      factsToUpdate.push(
+        ...facts.filter(
+          (fact) =>
+            fact.accountId === input.accountId &&
+            fact.customerId === input.customerId &&
+            fact.validTo === null,
+        ),
+      );
+    }
+
+    const deduped = new Map<string, SemanticFactRecord>();
+    for (const fact of factsToUpdate) {
+      deduped.set(fact.factId, fact);
+    }
+
+    const changed: string[] = [];
+    await Promise.all(
+      Array.from(deduped.values()).map(async (fact) => {
+        await this.store.updateSemanticFact(fact.factId, { validTo: now });
+        changed.push(fact.factId);
+      }),
+    );
+
+    return { forgotten: Array.from(new Set(changed)) };
   }
 
   async recall(input: RecallInput) {

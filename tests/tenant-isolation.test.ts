@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 
+import { MemoryService, SessionNotFoundError } from "../src/memory/service.js";
 import { InMemoryMemoryStore } from "../src/memory/store.js";
+import { FakeQwenClient } from "./helpers.js";
 
 describe("tenant-isolation", () => {
   describe("working-cache-isolation", () => {
@@ -209,6 +211,108 @@ describe("tenant-isolation", () => {
       
       // Should be separate (no cross-tenant leakage)
       expect(tenant1Events).not.toBe(tenant2Events);
+    });
+  });
+
+  describe("write-close-forget-tenant-isolation", () => {
+    it("does not overwrite a session when createSession is reused by another tenant", async () => {
+      const store = new InMemoryMemoryStore();
+      await store.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
+      await store.createSession({ accountId: "acct-2", customerId: "cust-2", sessionId: "sess-1" });
+
+      const session = await store.getSession("sess-1");
+      expect(session?.accountId).toBe("acct-1");
+      expect(session?.customerId).toBe("cust-1");
+    });
+
+    it("rejects appending a turn to a session owned by another tenant", async () => {
+      const qwen = new FakeQwenClient();
+      const store = new InMemoryMemoryStore();
+      const service = new MemoryService(store, qwen);
+      await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
+
+      await expect(
+        service.appendTurn({
+          accountId: "acct-2",
+          customerId: "cust-2",
+          sessionId: "sess-1",
+          role: "customer",
+          message: "hi",
+          ts: new Date(),
+        }),
+      ).rejects.toThrow(SessionNotFoundError);
+      expect(store.episodicEvents).toHaveLength(0);
+    });
+
+    it("rejects closing a session owned by another tenant", async () => {
+      const qwen = new FakeQwenClient();
+      const store = new InMemoryMemoryStore();
+      const service = new MemoryService(store, qwen);
+      await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
+
+      await expect(
+        service.closeSession({
+          accountId: "acct-2",
+          customerId: "cust-2",
+          sessionId: "sess-1",
+          closedAt: new Date(),
+        }),
+      ).rejects.toThrow(SessionNotFoundError);
+      const session = await store.getSession("sess-1");
+      expect(session?.distilledAt).toBeNull();
+    });
+
+    it("forget only expires facts for the requested tenant", async () => {
+      const qwen = new FakeQwenClient();
+      const store = new InMemoryMemoryStore();
+      const service = new MemoryService(store, qwen);
+
+      const tenant1Fact = await store.insertSemanticFact({
+        accountId: "acct-1",
+        customerId: "cust-1",
+        sessionId: null,
+        subject: "Acme",
+        predicate: "product_config",
+        predicateClass: "configuration",
+        object: "requires SSO",
+        confidence: 0.9,
+        adjudicationRationale: null,
+        validFrom: new Date("2026-06-25T10:00:00.000Z"),
+        validTo: null,
+        expiresAt: null,
+        supersededBy: null,
+        metadata: {},
+        embedding: Array.from({ length: 1024 }, () => 0),
+      });
+
+      const tenant2Fact = await store.insertSemanticFact({
+        accountId: "acct-2",
+        customerId: "cust-2",
+        sessionId: null,
+        subject: "Globex",
+        predicate: "product_config",
+        predicateClass: "configuration",
+        object: "region=eu-west",
+        confidence: 0.9,
+        adjudicationRationale: null,
+        validFrom: new Date("2026-06-25T10:00:00.000Z"),
+        validTo: null,
+        expiresAt: null,
+        supersededBy: null,
+        metadata: {},
+        embedding: Array.from({ length: 1024 }, () => 0),
+      });
+
+      const { forgotten } = await service.forget({
+        accountId: "acct-1",
+        customerId: "cust-1",
+        predicateClass: "configuration",
+      });
+
+      expect(forgotten).toContain(tenant1Fact.factId);
+      expect(forgotten).not.toContain(tenant2Fact.factId);
+      expect((await store.getFactById(tenant1Fact.factId))?.validTo).not.toBeNull();
+      expect((await store.getFactById(tenant2Fact.factId))?.validTo).toBeNull();
     });
   });
 });

@@ -15,6 +15,6 @@ export const mcpToolDefinitions: McpToolDefinition[] = [
   },
   {
     name: "forget",
-    description: "Expire or supersede current facts by fact id or predicate class.",
+    description: "Expire current facts by fact id or predicate class for a given account and customer.",
   },
 ];
