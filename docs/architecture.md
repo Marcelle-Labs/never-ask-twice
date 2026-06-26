@@ -13,7 +13,7 @@ Customer turn
      -> semantic memory for durable distilled facts
      -> forgetting logic for supersession and TTL expiry
   -> Postgres + pgvector
-  -> Qwen Cloud for embeddings, distillation, adjudication, and live response generation
+  -> Qwen Cloud for embeddings, session distillation, and conflict adjudication
 ```
 
 ## Components
