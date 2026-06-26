@@ -1,0 +1,37 @@
+{
+  "accountId": "acct-throughline",
+  "customerId": "cust-acme",
+  "customerName": "Acme Robotics",
+  "sessions": [
+    {
+      "sessionId": "session-1",
+      "openedAt": "2026-06-25T09:00:00.000Z",
+      "turns": [
+        {
+          "role": "customer",
+          "message": "We're Acme Robotics. Our SLA tier is gold, our product config requires SSO, the failing integration is Salesforce, and our escalation contact is Priya."
+        }
+      ]
+    },
+    {
+      "sessionId": "session-2",
+      "openedAt": "2026-06-26T09:00:00.000Z",
+      "turns": [
+        {
+          "role": "customer",
+          "message": "The Salesforce sync is failing again. Can you route it correctly without making me repeat the setup?"
+        }
+      ]
+    },
+    {
+      "sessionId": "session-3",
+      "openedAt": "2026-06-27T09:00:00.000Z",
+      "turns": [
+        {
+          "role": "manager",
+          "message": "Summarize what the system learned about this customer."
+        }
+      ]
+    }
+  ]
+}

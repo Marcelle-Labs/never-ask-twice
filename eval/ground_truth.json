@@ -1,0 +1,14 @@
+{
+  "requiredFacts": {
+    "sla_tier": "gold",
+    "product_config": "requires SSO",
+    "integration": "Salesforce",
+    "escalation_contact": "Priya"
+  },
+  "expectedManagerFacts": [
+    "Acme Robotics sla_tier gold",
+    "Acme Robotics product_config requires SSO",
+    "Acme Robotics integration Salesforce",
+    "Acme Robotics escalation_contact Priya"
+  ]
+}

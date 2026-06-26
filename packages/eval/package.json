@@ -1,0 +1,16 @@
+{
+  "name": "@throughline/eval",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@throughline/contracts": "workspace:*",
+    "@throughline/memory": "workspace:*"
+  }
+}
