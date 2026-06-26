@@ -12,6 +12,7 @@ import { MEMORY_EMBEDDING_DIM } from "../../../src/contracts.js";
 import { MemoryService } from "../../../src/memory/service.js";
 import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
+import { ChatView, FactsView } from "./ui/views.js";
 
 // ---------------------------------------------------------------------------
 // Qwen client - zero-vector fallback when DASHSCOPE_API_KEY is absent
@@ -234,6 +235,41 @@ app.post("/recall", async (c) => {
     const msg = err instanceof Error ? err.message : String(err);
     return c.json({ error: msg }, 500);
   }
+});
+
+// ---------------------------------------------------------------------------
+// HTML UI Routes
+// ---------------------------------------------------------------------------
+
+// Static CSS
+app.get("/static/index.css", async (c) => {
+  const cssPath = new URL("./ui/index.css", import.meta.url).pathname;
+  try {
+    const fs = await import("node:fs");
+    const css = fs.readFileSync(cssPath, "utf8");
+    return c.text(css, 200, { "Content-Type": "text/css" });
+  } catch (err) {
+    console.error("[ui] Failed to read CSS:", err);
+    return c.text("body { background: #000; color: #fff; }", 200, { "Content-Type": "text/css" });
+  }
+});
+
+app.get("/chat", async (c) => {
+  const sessionId = c.req.query("sessionId") ?? randomUUID();
+  const memoryOn = c.req.query("memory") !== "off";
+  
+  // For the demo, we start with an empty thread or fetch session events
+  const events = await store.getEvents(sessionId);
+  const messages = events.map((e: any) => ({ role: e.role, message: e.message }));
+  
+  return c.html(ChatView(messages, sessionId, memoryOn));
+});
+
+app.get("/facts", async (c) => {
+  const accountId = c.req.query("accountId") ?? "acme_corp";
+  const customerId = c.req.query("customerId") ?? "jason_99";
+  const facts = await store.currentFacts(accountId, customerId, new Date());
+  return c.html(FactsView(facts));
 });
 
 // ---------------------------------------------------------------------------
