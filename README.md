@@ -118,7 +118,7 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` and set your `DASHSCOPE_API_KEY` from DashScope for live Qwen-backed embedding, distillation, adjudication, and response generation. The example is pre-filled for local Postgres on port 5433.
+Edit `.env` and set your `DASHSCOPE_API_KEY` from DashScope for live Qwen-backed embeddings, distillation, and adjudication. The example is pre-filled for local Postgres on port 5433.
 
 ```env
 DATABASE_URL=postgresql://neverasktwice:neverasktwice@localhost:5433/neverasktwice
