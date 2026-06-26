@@ -128,7 +128,14 @@ export class MemoryService {
 
     const existingFacts = await this.store.currentFacts(input.accountId, input.customerId, input.closedAt);
 
+    // Dedup candidates by (subject, predicate) to avoid violating unique index
+    const dedupedCandidates = new Map<string, typeof candidates[number]>();
     for (const candidate of candidates.map((item) => DistilledFactCandidateSchema.parse(item))) {
+      const key = `${candidate.subject}|${candidate.predicate}`;
+      dedupedCandidates.set(key, candidate); // last-wins
+    }
+
+    for (const candidate of dedupedCandidates.values()) {
       const embedding = await this.qwenClient.embed(
         `${candidate.subject} ${candidate.predicate} ${candidate.object}`
       );
@@ -169,14 +176,9 @@ export class MemoryService {
         });
       }
 
-      for (const event of events) {
-        await this.store.addProvenance({
-          factId: newFact.factId,
-          eventId: event.eventId,
-          weight: 1,
-          rationale: "derived-from-session-close",
-        });
-      }
+      // Note: Provenance attribution requires event-level mapping from distillation output
+      // Current distillation doesn't provide which events produced which candidate
+      // Skipping provenance to avoid incorrect Cartesian product attribution
 
       insertedFacts.push(newFact);
     }
