@@ -14,39 +14,51 @@ import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
 
 // ---------------------------------------------------------------------------
-// Qwen client — zero-vector fallback when DASHSCOPE_API_KEY is absent
+// Qwen client - zero-vector fallback when DASHSCOPE_API_KEY is absent
 // ---------------------------------------------------------------------------
 function buildQwenClient(): QwenClient {
   if (!process.env.DASHSCOPE_API_KEY) {
     console.warn(
-      "[qwenClient] No DASHSCOPE_API_KEY — returning zero vectors and empty distillations. LOCAL DEV ONLY."
+      "[qwenClient] No DASHSCOPE_API_KEY - returning zero vectors and empty distillations. LOCAL DEV ONLY."
     );
     return {
       async embed(_input: string) {
         console.warn(
-          "[qwenClient] No DASHSCOPE_API_KEY — returning zero vector. Local dev only."
+          "[qwenClient] No DASHSCOPE_API_KEY - returning zero vector. Local dev only."
         );
         return new Array(MEMORY_EMBEDDING_DIM).fill(0) as number[];
       },
       async chat(input: { system: string; user: string }) {
-        console.warn("[qwenClient] No DASHSCOPE_API_KEY — returning empty chat. Local dev only.");
+        console.warn("[qwenClient] No DASHSCOPE_API_KEY - returning empty chat. Local dev only.");
         return "";
       },
       async distill(input: { transcript: string }) {
         console.warn(
-          "[qwenClient] No DASHSCOPE_API_KEY — returning empty distillation. Local dev only."
+          "[qwenClient] No DASHSCOPE_API_KEY - returning empty distillation. Local dev only."
         );
         return [];
       },
       async adjudicate(input: { currentFact: string; candidateFact: string }) {
         console.warn(
-          "[qwenClient] No DASHSCOPE_API_KEY — returning empty adjudication. Local dev only."
+          "[qwenClient] No DASHSCOPE_API_KEY - returning empty adjudication. Local dev only."
         );
         return "";
       },
     };
   }
   return createQwenClient();
+}
+
+function capabilityStatus() {
+  const qwenConfigured = Boolean(process.env.DASHSCOPE_API_KEY);
+  const databaseConfigured = Boolean(process.env.DATABASE_URL);
+
+  return {
+    ok: true,
+    qwenConfigured,
+    databaseConfigured,
+    mode: qwenConfigured ? "qwen-live" : "local-safe",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +76,7 @@ app.use("*", cors());
 // ---------------------------------------------------------------------------
 // GET /health
 // ---------------------------------------------------------------------------
-app.get("/health", (c) => c.json({ ok: true }, 200));
+app.get("/health", (c) => c.json(capabilityStatus(), 200));
 
 // ---------------------------------------------------------------------------
 // POST /turn
@@ -120,7 +132,7 @@ app.post("/turn", async (c) => {
 // ---------------------------------------------------------------------------
 // POST /sessions/:id/close
 // Body: { accountId, customerId, closedAt? }
-// Triggers distillation of episodic events → semantic facts.
+// Triggers distillation of episodic events -> semantic facts.
 // ---------------------------------------------------------------------------
 const CloseBodySchema = z.object({
   accountId: z.string().min(1),
