@@ -1,6 +1,8 @@
 # Alibaba Cloud Function Compute Deployment
 
-Never Ask Twice is deployed to Alibaba Cloud Function Compute (FC) via the `s.yaml` in the repo root.
+Never Ask Twice is designed to deploy to Alibaba Cloud Function Compute (FC) via the root `s.yaml`.
+
+> Status: deployment instructions are present. Final deployment proof requires a live FC URL plus successful `/health` and Qwen-backed API evidence after credentials are available.
 
 ## Pre-requisites
 
@@ -11,7 +13,7 @@ Never Ask Twice is deployed to Alibaba Cloud Function Compute (FC) via the `s.ya
    npm install -g @serverless-devs/s
    s config add --AccessKeyID <key> --AccessKeySecret <secret> --AccountID <account>
    ```
-4. A Neon (or other Postgres + pgvector) database reachable from the public internet.
+4. A Neon or other Postgres + pgvector database reachable from Function Compute.
 
 ## Environment variables
 
@@ -28,22 +30,25 @@ Set these before running `s deploy`:
 | `QWEN_EMBEDDING_DIM` | `1024` |
 | `MEMORY_TOKEN_BUDGET` | `1200` |
 
-## Deploy
+## Build and deploy
 
 ```bash
+pnpm install
+pnpm build
 s deploy -y
 ```
 
-This uploads the built `dist/` tree (produced by `pnpm build`) to Function Compute and wires the environment variables.
+This uploads the built `dist/` tree to Function Compute and wires the environment variables defined in `s.yaml`.
 
-## Verify
+## Verify after deployment
 
 ```bash
-export FC_URL=$(s info --output json | jq -r '.services[0].service.url')
+export FC_URL=<your-function-compute-url>
 
-# Health check
-curl -fsS -o /dev/null -w "%{http_code}\n" "$FC_URL/health"
-# Expected: 200
+# Health and capability status
+curl -fsS "$FC_URL/health"
+# Expected shape:
+# {"ok":true,"qwenConfigured":true,"databaseConfigured":true,"mode":"qwen-live"}
 
 # Create a session and write a turn
 curl -X POST "$FC_URL/turn" \
@@ -61,6 +66,17 @@ curl -X POST "$FC_URL/recall" \
   -d '{"accountId":"acct-1","customerId":"cust-1","sessionId":"sess-2","query":"Route the Salesforce outage without making me repeat the setup."}'
 ```
 
+## Proof block for final submission
+
+Do not treat this file as deployment proof until this section is filled in.
+
+```text
+FC URL: <paste live URL>
+Verified at: <timestamp>
+/health: <paste successful qwen-live response>
+Qwen-backed request evidence: <paste redacted curl response or screenshot reference>
+```
+
 ## Handler entry point
 
 `s.yaml` points to:
@@ -73,7 +89,7 @@ This is the `handler` export from `apps/api/src/server.ts`, which adapts the Hon
 
 ## Cold-start and latency
 
-Function Compute cold starts can add several seconds. The demo video is the primary artifact, so cold start is acceptable for scoring. The live URL must remain reachable during the judging window (Jul 10–31).
+Function Compute cold starts can add several seconds. The demo video is the primary artifact, so cold start is acceptable for scoring. The live URL must remain reachable during the judging window.
 
 ## Updating the deployment
 
@@ -87,3 +103,4 @@ s deploy -y
 - **License must be visible in the GitHub About widget before submitting.**
 - **Do not commit `.env` to the repo.** Only `.env.example` is tracked.
 - If `s deploy` fails, confirm the `dist/` directory exists and contains `dist/apps/api/src/server.js`.
+- If `/health` reports `mode: "local-safe"`, `DASHSCOPE_API_KEY` is missing or not visible to the deployed function.
