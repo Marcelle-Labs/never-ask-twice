@@ -48,6 +48,7 @@
     "mcp:list-tools": "pnpm build && node scripts/mcp-list-tools.mjs",
     "migrate": "pnpm build && node --env-file=.env dist/scripts/migrate.js",
     "prepare": "node scripts/install-hooks.mjs",
+    "pretest": "pnpm build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
