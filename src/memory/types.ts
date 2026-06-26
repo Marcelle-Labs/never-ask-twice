@@ -54,3 +54,33 @@ export interface WorkingMemoryRecord extends DistilledFactCandidate {
   customerId: string;
   observedAt: Date;
 }
+
+export interface MemoryStore {
+  createSession(record: {
+    sessionId: string;
+    accountId: string;
+    customerId: string;
+  }): Promise<SessionRecord>;
+  getSession(sessionId: string): Promise<SessionRecord | undefined>;
+  updateSession(sessionId: string, updates: Partial<SessionRecord>): Promise<void>;
+
+  appendEvent(record: Omit<EpisodicEventRecord, "eventId">): Promise<EpisodicEventRecord>;
+  getEvents(sessionId: string): Promise<EpisodicEventRecord[]>;
+  getAllEvents(accountId: string, customerId: string): Promise<EpisodicEventRecord[]>;
+
+  rememberWorkingFact(record: WorkingMemoryRecord): Promise<WorkingMemoryRecord>;
+  currentWorkingFacts(
+    accountId: string,
+    customerId: string,
+    sessionId?: string
+  ): Promise<WorkingMemoryRecord[]>;
+
+  currentFacts(accountId: string, customerId: string, now: Date): Promise<SemanticFactRecord[]>;
+  getSemanticFactsBySession(sessionId: string): Promise<SemanticFactRecord[]>;
+  getFactById(factId: string): Promise<SemanticFactRecord | undefined>;
+  getFactsByPredicateClass(predicateClass: string): Promise<SemanticFactRecord[]>;
+  insertSemanticFact(record: Omit<SemanticFactRecord, "factId">): Promise<SemanticFactRecord>;
+  updateSemanticFact(factId: string, updates: Partial<SemanticFactRecord>): Promise<void>;
+
+  addProvenance(record: SemanticFactProvenanceRecord): Promise<void>;
+}

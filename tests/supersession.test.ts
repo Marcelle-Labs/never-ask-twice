@@ -32,7 +32,8 @@ describe("supersession", () => {
       },
     ]);
 
-    const service = new MemoryService(new InMemoryMemoryStore(), qwen);
+    const store = new InMemoryMemoryStore();
+    const service = new MemoryService(store, qwen);
 
     await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
     await service.appendTurn({
@@ -66,8 +67,8 @@ describe("supersession", () => {
       closedAt: new Date("2026-06-26T10:05:00.000Z"),
     });
 
-    const current = service.store.semanticFacts.filter((fact) => fact.validTo === null);
-    const superseded = service.store.semanticFacts.filter((fact) => fact.validTo !== null);
+    const current = store.semanticFacts.filter((fact) => fact.validTo === null);
+    const superseded = store.semanticFacts.filter((fact) => fact.validTo !== null);
 
     expect(current).toHaveLength(1);
     expect(superseded).toHaveLength(1);

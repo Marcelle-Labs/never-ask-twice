@@ -1,15 +1,46 @@
 {
-  "name": "throughline",
-  "private": true,
+  "name": "never-ask-twice",
+  "private": false,
+  "type": "module",
   "version": "0.1.0",
+  "description": "Enterprise Support MemoryAgent on Qwen Cloud that remembers customer context across sessions and proves improvement with a live re-ask-rate ablation.",
+  "license": "Apache-2.0",
+  "author": "Qwynn Marcelle",
+  "homepage": "https://github.com/marcelle-labs/never-ask-twice#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marcelle-labs/never-ask-twice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/marcelle-labs/never-ask-twice/issues"
+  },
+  "keywords": [
+    "qwen",
+    "qwen-cloud",
+    "memory-agent",
+    "ai-agent",
+    "customer-support",
+    "enterprise-ai",
+    "mcp",
+    "model-context-protocol",
+    "hono",
+    "alibaba-cloud",
+    "function-compute",
+    "pgvector",
+    "postgres",
+    "semantic-memory",
+    "episodic-memory",
+    "agent-evaluation",
+    "support-automation"
+  ],
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "boundary-scan": "bash scripts/boundary-scan.sh",
-    "build": "tsc -p tsconfig.build.json",
-    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json && pnpm --filter @never-ask-twice/api build",
+    "dev": "pnpm --filter @never-ask-twice/api dev",
     "demo:script-check": "pnpm build && node dist/scripts/demo-script-check.js",
     "eval": "pnpm build && node dist/eval/run.js",
     "gitleaks": "bash -lc 'command -v gitleaks >/dev/null 2>&1 && gitleaks detect || { echo \"gitleaks CLI is required\"; exit 1; }'",
@@ -21,17 +52,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "drizzle-orm": "^0.36.1",
-    "hono": "^4.6.5",
-    "openai": "^4.67.3",
-    "pg": "^8.13.0",
-    "zod": "^3.23.8"
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.27",
+    "openai": "^4.104.0",
+    "pg": "^8.22.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@hono/node-server": "^2.0.6",
     "@types/node": "^22.10.1",
     "@types/pg": "^8.11.10",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.3"
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
   }
 }

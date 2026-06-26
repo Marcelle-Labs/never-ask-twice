@@ -20,7 +20,8 @@ describe("idempotent", () => {
       },
     ]);
 
-    const service = new MemoryService(new InMemoryMemoryStore(), qwen);
+    const store = new InMemoryMemoryStore();
+    const service = new MemoryService(store, qwen);
     await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
     await service.appendTurn({
       accountId: "acct-1",
@@ -35,7 +36,7 @@ describe("idempotent", () => {
     await service.closeSession({ sessionId: "sess-1", accountId: "acct-1", customerId: "cust-1", closedAt });
     await service.closeSession({ sessionId: "sess-1", accountId: "acct-1", customerId: "cust-1", closedAt });
 
-    expect(service.store.semanticFacts).toHaveLength(1);
-    expect(service.store.semanticFactProvenance).toHaveLength(1);
+    expect(store.semanticFacts).toHaveLength(1);
+    expect(store.semanticFactProvenance).toHaveLength(1);
   });
 });

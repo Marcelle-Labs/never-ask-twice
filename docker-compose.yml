@@ -2,8 +2,8 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: throughline
-      POSTGRES_USER: throughline
-      POSTGRES_PASSWORD: throughline
+      POSTGRES_DB: neverasktwice
+      POSTGRES_USER: neverasktwice
+      POSTGRES_PASSWORD: neverasktwice
     ports:
       - "5433:5432"

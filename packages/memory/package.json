@@ -1,5 +1,5 @@
 {
-  "name": "@throughline/memory",
+  "name": "@never-ask-twice/memory",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@throughline/contracts": "workspace:*",
-    "@throughline/db": "workspace:*",
+    "@hono/node-server": "^2.0.6",
+    "@never-ask-twice/contracts": "workspace:*",
+    "@never-ask-twice/db": "workspace:*",
     "openai": "^4.67.3",
     "zod": "^3.23.8"
   }

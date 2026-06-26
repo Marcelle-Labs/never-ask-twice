@@ -9,8 +9,7 @@ import {
   type TurnInput,
 } from "../contracts.js";
 import type { QwenClient } from "../qwen/qwenClient.js";
-import { InMemoryMemoryStore } from "./store.js";
-import type { SemanticFactRecord } from "./types.js";
+import type { MemoryStore, SemanticFactRecord } from "./types.js";
 
 function cosineSimilarity(left: number[], right: number[]) {
   if (left.length === 0 || right.length === 0 || left.length !== right.length) {
@@ -59,13 +58,13 @@ function recencyScore(date: Date, now: Date) {
 
 export class MemoryService {
   constructor(
-    readonly store: InMemoryMemoryStore,
+    readonly store: MemoryStore,
     readonly qwenClient: QwenClient,
   ) {}
 
   async createSession(input: { accountId: string; customerId: string; sessionId?: string }) {
     const sessionId = input.sessionId ?? randomUUID();
-    return this.store.createSession({
+    return await this.store.createSession({
       sessionId,
       accountId: input.accountId,
       customerId: input.customerId,
@@ -75,7 +74,7 @@ export class MemoryService {
   async appendTurn(input: TurnInput) {
     const turn = TurnInputSchema.parse(input);
     const embedding = await this.qwenClient.embed(turn.message);
-    return this.store.appendEvent({
+    return await this.store.appendEvent({
       accountId: turn.accountId,
       customerId: turn.customerId,
       sessionId: turn.sessionId,
@@ -87,7 +86,7 @@ export class MemoryService {
     });
   }
 
-  rememberWorkingFact(input: {
+  async rememberWorkingFact(input: {
     accountId: string;
     customerId: string;
     sessionId: string;
@@ -95,7 +94,7 @@ export class MemoryService {
     observedAt: Date;
   }) {
     const candidate = DistilledFactCandidateSchema.parse(input.candidate);
-    return this.store.rememberWorkingFact({
+    return await this.store.rememberWorkingFact({
       ...candidate,
       accountId: input.accountId,
       customerId: input.customerId,
@@ -104,8 +103,13 @@ export class MemoryService {
     });
   }
 
-  async closeSession(input: { sessionId: string; accountId: string; customerId: string; closedAt: Date }) {
-    const session = this.store.sessions.get(input.sessionId);
+  async closeSession(input: {
+    sessionId: string;
+    accountId: string;
+    customerId: string;
+    closedAt: Date;
+  }) {
+    const session = await this.store.getSession(input.sessionId);
     if (!session) {
       throw new Error(`Unknown session: ${input.sessionId}`);
     }
@@ -113,19 +117,23 @@ export class MemoryService {
     if (session.distilledAt) {
       return {
         session,
-        facts: this.store.semanticFacts.filter((fact) => fact.sessionId === input.sessionId),
+        facts: await this.store.getSemanticFactsBySession(input.sessionId),
       };
     }
 
-    const events = this.store.episodicEvents.filter((event) => event.sessionId === input.sessionId);
+    const events = await this.store.getEvents(input.sessionId);
     const transcript = events.map((event) => `${event.role}: ${event.message}`).join("\n");
     const candidates = await this.qwenClient.distill({ transcript });
     const insertedFacts: SemanticFactRecord[] = [];
 
+    const existingFacts = await this.store.currentFacts(input.accountId, input.customerId, input.closedAt);
+
     for (const candidate of candidates.map((item) => DistilledFactCandidateSchema.parse(item))) {
-      const embedding = await this.qwenClient.embed(`${candidate.subject} ${candidate.predicate} ${candidate.object}`);
-      const current = this.store.currentFacts(input.accountId, input.customerId, input.closedAt).find(
-        (fact) => fact.subject === candidate.subject && fact.predicate === candidate.predicate,
+      const embedding = await this.qwenClient.embed(
+        `${candidate.subject} ${candidate.predicate} ${candidate.object}`
+      );
+      const current = existingFacts.find(
+        (fact) => fact.subject === candidate.subject && fact.predicate === candidate.predicate
       );
 
       if (current && current.object === candidate.object) {
@@ -136,7 +144,7 @@ export class MemoryService {
         ? new Date(input.closedAt.getTime() + candidate.ttlDays * 24 * 3_600_000)
         : null;
 
-      const newFact = this.store.insertSemanticFact({
+      const newFact = await this.store.insertSemanticFact({
         accountId: input.accountId,
         customerId: input.customerId,
         sessionId: input.sessionId,
@@ -155,12 +163,14 @@ export class MemoryService {
       });
 
       if (current) {
-        current.validTo = input.closedAt;
-        current.supersededBy = newFact.factId;
+        await this.store.updateSemanticFact(current.factId, {
+          validTo: input.closedAt,
+          supersededBy: newFact.factId,
+        });
       }
 
       for (const event of events) {
-        this.store.addProvenance({
+        await this.store.addProvenance({
           factId: newFact.factId,
           eventId: event.eventId,
           weight: 1,
@@ -171,17 +181,21 @@ export class MemoryService {
       insertedFacts.push(newFact);
     }
 
-    session.closedAt = input.closedAt;
-    session.distilledAt = input.closedAt;
-    session.distillationStatus = "complete";
+    await this.store.updateSession(input.sessionId, {
+      closedAt: input.closedAt,
+      distilledAt: input.closedAt,
+      distillationStatus: "complete",
+    });
 
-    return { session, facts: insertedFacts };
+    const finalSession = (await this.store.getSession(input.sessionId))!;
+    return { session: finalSession, facts: insertedFacts };
   }
 
   async recall(input: RecallInput) {
     const recall = RecallInputSchema.parse(input);
     const queryEmbedding = await this.qwenClient.embed(recall.query);
-    const semantic = this.store.currentFacts(recall.accountId, recall.customerId, recall.now).map((fact) => ({
+    const currentFacts = await this.store.currentFacts(recall.accountId, recall.customerId, recall.now);
+    const semantic = currentFacts.map((fact) => ({
       kind: "semantic" as const,
       score:
         0.45 * cosineSimilarity(queryEmbedding, fact.embedding) +
@@ -192,17 +206,21 @@ export class MemoryService {
       summary: `${fact.subject} ${fact.predicate} ${fact.object}`,
     }));
 
-    const episodic = this.store.episodicEvents
-      .filter((event) => event.accountId === recall.accountId && event.customerId === recall.customerId)
-      .map((event) => ({
-        kind: "episodic" as const,
-        score:
-          0.7 * cosineSimilarity(queryEmbedding, event.embedding) + 0.3 * recencyScore(event.ts, recall.now),
-        payload: event,
-        summary: `${event.role}: ${event.message}`,
-      }));
+    const events = await this.store.getAllEvents(recall.accountId, recall.customerId);
+    const episodic = events.map((event) => ({
+      kind: "episodic" as const,
+      score:
+        0.7 * cosineSimilarity(queryEmbedding, event.embedding) + 0.3 * recencyScore(event.ts, recall.now),
+      payload: event,
+      summary: `${event.role}: ${event.message}`,
+    }));
 
-    const working = this.store.currentWorkingFacts(recall.accountId, recall.customerId, recall.sessionId).map((fact) => ({
+    const workingFacts = await this.store.currentWorkingFacts(
+      recall.accountId,
+      recall.customerId,
+      recall.sessionId
+    );
+    const working = workingFacts.map((fact) => ({
       kind: "working" as const,
       score: 1.5 + 0.2 * predicateRelevanceBoost(fact.predicate, recall.query),
       payload: fact,

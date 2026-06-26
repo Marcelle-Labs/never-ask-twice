@@ -1,5 +1,5 @@
 {
-  "name": "@throughline/db",
+  "name": "@never-ask-twice/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@throughline/contracts": "workspace:*",
+    "@hono/node-server": "^2.0.6",
+    "@never-ask-twice/contracts": "workspace:*",
     "drizzle-orm": "^0.36.1",
     "pg": "^8.13.0",
     "zod": "^3.23.8"

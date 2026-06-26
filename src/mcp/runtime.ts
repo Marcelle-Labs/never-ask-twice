@@ -70,18 +70,25 @@ export async function distillSession(runtime: McpRuntime, args: DistillSessionAr
 
 export async function forget(runtime: McpRuntime, args: ForgetArgs) {
   const now = new Date("2026-06-26T10:00:00.000Z");
+  const factsToUpdate: SemanticFactRecord[] = [];
   const changed: string[] = [];
 
-  for (const fact of runtime.memoryService.store.semanticFacts) {
-    if (args.fact_id && fact.factId === args.fact_id) {
-      fact.validTo = now;
-      changed.push(fact.factId);
-    }
-    if (args.predicate_class && fact.predicateClass === args.predicate_class && fact.validTo === null) {
-      fact.validTo = now;
-      changed.push(fact.factId);
-    }
+  if (args.fact_id) {
+    const fact = await runtime.memoryService.store.getFactById(args.fact_id);
+    if (fact) factsToUpdate.push(fact);
   }
+
+  if (args.predicate_class) {
+    const facts = await runtime.memoryService.store.getFactsByPredicateClass(args.predicate_class);
+    factsToUpdate.push(...facts.filter((f) => f.validTo === null));
+  }
+
+  await Promise.all(
+    factsToUpdate.map(async (fact) => {
+      await runtime.memoryService.store.updateSemanticFact(fact.factId, { validTo: now });
+      changed.push(fact.factId);
+    }),
+  );
 
   return {
     forgotten: Array.from(new Set(changed)),

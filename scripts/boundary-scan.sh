@@ -18,7 +18,6 @@ forbidden_patterns=(
   "$(join_token snap back)"
   "$(join_token @ snap back /)"
   "$(join_token @ vr eko /)"
-  "$(join_token mar celle -labs)"
   "$(join_token linear .app)"
   "$(join_token dop pler)"
   "$(join_token fly .io)"

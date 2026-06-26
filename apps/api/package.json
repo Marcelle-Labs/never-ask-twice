@@ -1,19 +1,28 @@
 {
-  "name": "@throughline/api",
+  "name": "@never-ask-twice/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Hono API for Never Ask Twice — Enterprise Support MemoryAgent on Qwen Cloud.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx --env-file=../../.env watch src/server.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@throughline/contracts": "workspace:*",
-    "@throughline/db": "workspace:*",
-    "@throughline/memory": "workspace:*",
-    "hono": "^4.6.5"
+    "@hono/node-server": "^2.0.6",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.27",
+    "openai": "^4.104.0",
+    "pg": "^8.22.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
   }
 }

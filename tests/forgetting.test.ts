@@ -22,7 +22,8 @@ describe("forgetting", () => {
       },
     ]);
 
-    const service = new MemoryService(new InMemoryMemoryStore(), qwen);
+    const store = new InMemoryMemoryStore();
+    const service = new MemoryService(store, qwen);
     await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
     await service.appendTurn({
       accountId: "acct-1",
@@ -48,6 +49,6 @@ describe("forgetting", () => {
     });
 
     expect(recall.bundle.filter((item) => item.kind === "semantic")).toHaveLength(0);
-    expect(service.store.semanticFactProvenance).toHaveLength(1);
+    expect(store.semanticFactProvenance).toHaveLength(1);
   });
 });

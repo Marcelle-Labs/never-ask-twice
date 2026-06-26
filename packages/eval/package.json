@@ -1,5 +1,5 @@
 {
-  "name": "@throughline/eval",
+  "name": "@never-ask-twice/eval",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@throughline/contracts": "workspace:*",
-    "@throughline/memory": "workspace:*"
+    "@hono/node-server": "^2.0.6",
+    "@never-ask-twice/contracts": "workspace:*",
+    "@never-ask-twice/memory": "workspace:*"
   }
 }

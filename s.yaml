@@ -1,11 +1,11 @@
 edition: 3.0.0
-name: throughline
+name: never-ask-twice
 
 vars:
   region: ${env(ALIBABA_REGION)}
   service:
-    name: throughline-api
-    description: Throughline customer-support continuity memory agent
+    name: never-ask-twice-api
+    description: Never Ask Twice — Enterprise Support MemoryAgent on Qwen Cloud
 
 resources:
   api:
@@ -16,11 +16,11 @@ resources:
         name: ${vars.service.name}
         description: ${vars.service.description}
       function:
-        name: throughline-api
+        name: never-ask-twice-api
         runtime: nodejs20
         timeout: 60
         memorySize: 512
-        handler: dist/src/server.handler
+        handler: dist/apps/api/src/server.handler
         code: ./
         environmentVariables:
           DATABASE_URL: ${env(DATABASE_URL)}
