@@ -15,10 +15,10 @@ import type {
 
 type Db = NodePgDatabase<typeof schema>;
 
-// In-memory working-facts store (working facts are ephemeral to the session)
-const workingFactsCache: WorkingMemoryRecord[] = [];
-
 export class DrizzleMemoryStore implements MemoryStore {
+  // In-memory working-facts store (working facts are ephemeral to the session)
+  private workingFactsCache: WorkingMemoryRecord[] = [];
+
   constructor(private readonly db: Db) {}
 
   async createSession(
@@ -144,7 +144,7 @@ export class DrizzleMemoryStore implements MemoryStore {
   }
 
   async rememberWorkingFact(record: WorkingMemoryRecord): Promise<WorkingMemoryRecord> {
-    workingFactsCache.push(record);
+    this.workingFactsCache.push(record);
     return record;
   }
 
@@ -153,7 +153,7 @@ export class DrizzleMemoryStore implements MemoryStore {
     customerId: string,
     sessionId?: string
   ): Promise<WorkingMemoryRecord[]> {
-    return workingFactsCache.filter(
+    return this.workingFactsCache.filter(
       (f) =>
         f.accountId === accountId &&
         f.customerId === customerId &&
