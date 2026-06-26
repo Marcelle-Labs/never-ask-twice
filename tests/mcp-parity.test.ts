@@ -66,17 +66,14 @@ function callServer(message: Record<string, unknown>) {
 
 describe("mcp-parity", () => {
   it("returns the same recall payload over MCP and in-process", async () => {
-    execFileSync("pnpm", ["build"], {
-      cwd: process.cwd(),
-      stdio: "inherit",
-    });
-
     const runtime = await createSeededMcpRuntime();
+    const now = new Date("2026-06-26T09:00:00.000Z").toISOString();
     const args = {
       account_id: "acct-1",
       customer_id: "cust-1",
       session_id: "sess-2",
       query: "Can you route the Salesforce outage without making me repeat the setup?",
+      now,
     };
 
     const direct = await recallMemory(runtime, args);
