@@ -36,6 +36,7 @@ allowed_secret_files=(
 
 while IFS= read -r file; do
   case "$file" in
+    ./.windsurf/mcp.json) continue ;;
     ./.git/*) continue ;;
     ./node_modules/*) continue ;;
     ./dist/*) continue ;;

@@ -6,4 +6,5 @@ coverage
 pnpm-lock.yaml
 .serverless
 .fc
-.windsurf/
+.windsurf/mcp.json
+.windsurf/rules/.DS_Store

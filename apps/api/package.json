@@ -6,7 +6,7 @@
   "description": "Hono API for Never Ask Twice — Enterprise Support MemoryAgent on Qwen Cloud.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx --env-file=../../.env watch src/server.ts",
+    "dev": "tsx --env-file=../../.env --watch src/server.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
