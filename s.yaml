@@ -1,0 +1,40 @@
+edition: 3.0.0
+name: throughline
+
+vars:
+  region: ${env(ALIBABA_REGION)}
+  service:
+    name: throughline-api
+    description: Throughline customer-support continuity memory agent
+
+resources:
+  api:
+    component: fc3
+    props:
+      region: ${vars.region}
+      service:
+        name: ${vars.service.name}
+        description: ${vars.service.description}
+      function:
+        name: throughline-api
+        runtime: nodejs20
+        timeout: 60
+        memorySize: 512
+        handler: dist/src/server.handler
+        code: ./
+        environmentVariables:
+          DATABASE_URL: ${env(DATABASE_URL)}
+          DASHSCOPE_API_KEY: ${env(DASHSCOPE_API_KEY)}
+          QWEN_BASE_URL: ${env(QWEN_BASE_URL)}
+          QWEN_CHAT_MODEL: ${env(QWEN_CHAT_MODEL)}
+          QWEN_EMBEDDING_MODEL: ${env(QWEN_EMBEDDING_MODEL)}
+          QWEN_EMBEDDING_DIM: ${env(QWEN_EMBEDDING_DIM)}
+          MEMORY_TOKEN_BUDGET: ${env(MEMORY_TOKEN_BUDGET)}
+      triggers:
+        - name: httpTrigger
+          type: http
+          config:
+            authType: anonymous
+            methods:
+              - GET
+              - POST

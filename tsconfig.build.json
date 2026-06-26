@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "."
+  },
+  "include": ["src", "scripts", "eval"],
+  "exclude": ["tests", "node_modules", "dist"]
+}

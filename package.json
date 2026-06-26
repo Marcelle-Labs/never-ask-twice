@@ -1,0 +1,37 @@
+{
+  "name": "throughline",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "boundary-scan": "bash scripts/boundary-scan.sh",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/server.ts",
+    "demo:script-check": "pnpm build && node dist/scripts/demo-script-check.js",
+    "eval": "pnpm build && node dist/eval/run.js",
+    "gitleaks": "bash -lc 'command -v gitleaks >/dev/null 2>&1 && gitleaks detect || { echo \"gitleaks CLI is required\"; exit 1; }'",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "mcp:list-tools": "pnpm build && node scripts/mcp-list-tools.mjs",
+    "migrate": "pnpm build && node --env-file=.env dist/scripts/migrate.js",
+    "prepare": "node scripts/install-hooks.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.36.1",
+    "hono": "^4.6.5",
+    "openai": "^4.67.3",
+    "pg": "^8.13.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.3"
+  }
+}
