@@ -18,6 +18,14 @@ function summarizeFact(fact: SemanticFactRecord) {
   return `${fact.subject} ${fact.predicate} ${fact.object}`;
 }
 
+function parseTimestamp(value: string, field: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid ISO timestamp for ${field}: ${value}`);
+  }
+  return date;
+}
+
 export async function recallMemory(runtime: McpRuntime, args: RecallMemoryArgs) {
   return runtime.memoryService.recall({
     accountId: args.account_id,
@@ -25,7 +33,7 @@ export async function recallMemory(runtime: McpRuntime, args: RecallMemoryArgs) 
     sessionId: args.session_id,
     query: args.query,
     tokenBudget: 1200,
-    now: new Date("2026-06-26T09:00:00.000Z"),
+    now: args.now ? parseTimestamp(args.now, "now") : new Date(),
   });
 }
 
@@ -58,7 +66,7 @@ export async function distillSession(runtime: McpRuntime, args: DistillSessionAr
     sessionId: args.session_id,
     accountId: tenant.accountId,
     customerId: tenant.customerId,
-    closedAt: args.closed_at ? new Date(args.closed_at) : new Date("2026-06-26T09:05:00.000Z"),
+    closedAt: args.closed_at ? new Date(args.closed_at) : new Date(),
   });
 
   return {
@@ -69,13 +77,15 @@ export async function distillSession(runtime: McpRuntime, args: DistillSessionAr
 }
 
 export async function forget(runtime: McpRuntime, args: ForgetArgs) {
-  const now = new Date("2026-06-26T10:00:00.000Z");
+  const now = new Date();
   const factsToUpdate: SemanticFactRecord[] = [];
   const changed: string[] = [];
 
   if (args.fact_id) {
     const fact = await runtime.memoryService.store.getFactById(args.fact_id);
-    if (fact) factsToUpdate.push(fact);
+    if (fact && fact.validTo === null) {
+      factsToUpdate.push(fact);
+    }
   }
 
   if (args.predicate_class) {
@@ -83,8 +93,14 @@ export async function forget(runtime: McpRuntime, args: ForgetArgs) {
     factsToUpdate.push(...facts.filter((f) => f.validTo === null));
   }
 
+  // Dedup by factId to avoid double updates
+  const dedupedFacts = new Map<string, SemanticFactRecord>();
+  for (const fact of factsToUpdate) {
+    dedupedFacts.set(fact.factId, fact);
+  }
+
   await Promise.all(
-    factsToUpdate.map(async (fact) => {
+    Array.from(dedupedFacts.values()).map(async (fact) => {
       await runtime.memoryService.store.updateSemanticFact(fact.factId, { validTo: now });
       changed.push(fact.factId);
     }),
