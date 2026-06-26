@@ -9,7 +9,7 @@ import { z } from "zod";
 import type { QwenClient } from "../../../src/qwen/qwenClient.js";
 import { createQwenClient } from "../../../src/qwen/qwenClient.js";
 import { MEMORY_EMBEDDING_DIM } from "../../../src/contracts.js";
-import { MemoryService } from "../../../src/memory/service.js";
+import { MemoryService, SessionNotFoundError } from "../../../src/memory/service.js";
 import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
 import { ChatView, FactsView } from "./ui/views.js";
@@ -110,21 +110,15 @@ app.post("/turn", async (c) => {
   const sessionId = parsed.data.sessionId ?? randomUUID();
   const ts = parsed.data.ts ? new Date(parsed.data.ts) : new Date();
 
-  // Auto-create session if it doesn't exist
-  await store.createSession({ accountId, customerId, sessionId });
-
-  // Validate session ownership if sessionId was provided by caller
-  if (parsed.data.sessionId) {
-    const session = await store.getSession(sessionId);
-    if (session && (session.accountId !== accountId || session.customerId !== customerId)) {
-      return c.json({ error: "Session not found" }, 404);
-    }
-  }
-
   try {
+    // Auto-create session if it doesn't exist, then enforce tenant ownership
+    await memory.createSession({ accountId, customerId, sessionId });
     const event = await memory.appendTurn({ accountId, customerId, sessionId, role, message, ts });
     return c.json({ ok: true, sessionId, eventId: event.eventId }, 201);
   } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      return c.json({ error: err.message }, 404);
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return c.json({ error: msg }, 500);
   }
@@ -159,17 +153,6 @@ app.post("/sessions/:id/close", async (c) => {
   const { accountId, customerId } = parsed.data;
   const closedAt = parsed.data.closedAt ? new Date(parsed.data.closedAt) : new Date();
 
-  // Verify session exists and belongs to the tenant
-  const session = await store.getSession(sessionId);
-  if (!session) {
-    return c.json({ error: `Session ${sessionId} not found` }, 404);
-  }
-
-  // Validate session ownership
-  if (session.accountId !== accountId || session.customerId !== customerId) {
-    return c.json({ error: `Session ${sessionId} not found` }, 404);
-  }
-
   try {
     const result = await memory.closeSession({ sessionId, accountId, customerId, closedAt });
     return c.json(
@@ -182,6 +165,9 @@ app.post("/sessions/:id/close", async (c) => {
       200
     );
   } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      return c.json({ error: err.message }, 404);
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return c.json({ error: msg }, 500);
   }

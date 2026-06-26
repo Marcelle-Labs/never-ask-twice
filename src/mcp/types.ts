@@ -21,6 +21,8 @@ export interface DistillSessionArgs {
 }
 
 export interface ForgetArgs {
+  account_id: string;
+  customer_id: string;
   fact_id?: string;
   predicate_class?: string;
 }

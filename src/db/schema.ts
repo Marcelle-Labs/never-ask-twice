@@ -1,4 +1,5 @@
-import { customType, index, jsonb, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, customType, index, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const vector = customType<{ data: number[]; config: { dimensions: number } }>({
   dataType(config) {
@@ -51,31 +52,49 @@ export const episodicEvents = pgTable(
   }),
 );
 
-export const semanticFacts = pgTable("semantic_facts", {
-  factId: uuid("fact_id").defaultRandom().primaryKey(),
-  accountId: text("account_id").notNull(),
-  customerId: text("customer_id").notNull(),
-  sessionId: text("session_id").references(() => sessions.sessionId),
-  subject: text("subject").notNull(),
-  predicate: text("predicate").notNull(),
-  predicateClass: text("predicate_class").notNull(),
-  object: text("object").notNull(),
-  confidence: real("confidence").notNull(),
-  adjudicationRationale: text("adjudication_rationale"),
-  validFrom: timestamp("valid_from", { withTimezone: true }).defaultNow().notNull(),
-  validTo: timestamp("valid_to", { withTimezone: true }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
-  supersededBy: uuid("superseded_by"),
-  metadata: jsonb("metadata").default({}).notNull(),
-  embedding: vector("embedding", { dimensions: 1024 }).notNull(),
-});
+export const semanticFacts = pgTable(
+  "semantic_facts",
+  {
+    factId: uuid("fact_id").defaultRandom().primaryKey(),
+    accountId: text("account_id").notNull(),
+    customerId: text("customer_id").notNull(),
+    sessionId: text("session_id").references(() => sessions.sessionId),
+    subject: text("subject").notNull(),
+    predicate: text("predicate").notNull(),
+    predicateClass: text("predicate_class").notNull(),
+    object: text("object").notNull(),
+    confidence: real("confidence").notNull(),
+    adjudicationRationale: text("adjudication_rationale"),
+    validFrom: timestamp("valid_from", { withTimezone: true }).defaultNow().notNull(),
+    validTo: timestamp("valid_to", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    supersededBy: uuid("superseded_by"),
+    metadata: jsonb("metadata").default({}).notNull(),
+    embedding: vector("embedding", { dimensions: 1024 }).notNull(),
+  },
+  (table) => [
+    check("confidence_check", sql`${table.confidence} >= 0 AND ${table.confidence} <= 1`),
+    uniqueIndex("semantic_facts_one_current_fact")
+      .on(table.accountId, table.customerId, table.subject, table.predicate)
+      .where(sql`${table.validTo} IS NULL`),
+  ],
+);
 
-export const semanticFactProvenance = pgTable("semantic_fact_provenance", {
-  factId: uuid("fact_id").notNull().references(() => semanticFacts.factId),
-  eventId: uuid("event_id").notNull().references(() => episodicEvents.eventId),
-  weight: real("weight").notNull(),
-  rationale: text("rationale"),
-});
+export const semanticFactProvenance = pgTable(
+  "semantic_fact_provenance",
+  {
+    factId: uuid("fact_id").notNull().references(() => semanticFacts.factId),
+    eventId: uuid("event_id").notNull().references(() => episodicEvents.eventId),
+    weight: real("weight").notNull(),
+    rationale: text("rationale"),
+  },
+  (table) => [
+    primaryKey({
+      name: "semantic_fact_provenance_pkey",
+      columns: [table.factId, table.eventId],
+    }),
+  ],
+);
 
 export const forgettingPolicy = pgTable("forgetting_policy", {
   policyId: uuid("policy_id").defaultRandom().primaryKey(),

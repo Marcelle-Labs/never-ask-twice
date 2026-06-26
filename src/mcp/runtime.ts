@@ -77,38 +77,12 @@ export async function distillSession(runtime: McpRuntime, args: DistillSessionAr
 }
 
 export async function forget(runtime: McpRuntime, args: ForgetArgs) {
-  const now = new Date();
-  const factsToUpdate: SemanticFactRecord[] = [];
-  const changed: string[] = [];
-
-  if (args.fact_id) {
-    const fact = await runtime.memoryService.store.getFactById(args.fact_id);
-    if (fact && fact.validTo === null) {
-      factsToUpdate.push(fact);
-    }
-  }
-
-  if (args.predicate_class) {
-    const facts = await runtime.memoryService.store.getFactsByPredicateClass(args.predicate_class);
-    factsToUpdate.push(...facts.filter((f) => f.validTo === null));
-  }
-
-  // Dedup by factId to avoid double updates
-  const dedupedFacts = new Map<string, SemanticFactRecord>();
-  for (const fact of factsToUpdate) {
-    dedupedFacts.set(fact.factId, fact);
-  }
-
-  await Promise.all(
-    Array.from(dedupedFacts.values()).map(async (fact) => {
-      await runtime.memoryService.store.updateSemanticFact(fact.factId, { validTo: now });
-      changed.push(fact.factId);
-    }),
-  );
-
-  return {
-    forgotten: Array.from(new Set(changed)),
-  };
+  return runtime.memoryService.forget({
+    accountId: args.account_id,
+    customerId: args.customer_id,
+    factId: args.fact_id,
+    predicateClass: args.predicate_class,
+  });
 }
 
 export async function callMcpTool(

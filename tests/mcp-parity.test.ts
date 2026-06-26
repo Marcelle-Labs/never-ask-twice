@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { execFileSync } from "node:child_process";
 
 import { createSeededMcpRuntime } from "../src/mcp/bootstrap.js";
-import { recallMemory } from "../src/mcp/runtime.js";
+import { callMcpTool, recallMemory } from "../src/mcp/runtime.js";
 
 function normalize(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -87,5 +87,46 @@ describe("mcp-parity", () => {
     })) as { result: typeof direct };
 
     expect(normalize(viaServer.result)).toEqual(normalize(direct));
+  });
+
+  it("forgets facts via MCP runtime using current time and tenant scope", async () => {
+    const runtime = await createSeededMcpRuntime();
+    const otherFact = await runtime.memoryService.store.insertSemanticFact({
+      accountId: "acct-2",
+      customerId: "cust-2",
+      sessionId: null,
+      subject: "Globex",
+      predicate: "product_config",
+      predicateClass: "configuration",
+      object: "region=eu-west",
+      confidence: 0.9,
+      adjudicationRationale: null,
+      validFrom: new Date("2026-06-25T10:00:00.000Z"),
+      validTo: null,
+      expiresAt: null,
+      supersededBy: null,
+      metadata: {},
+      embedding: Array.from({ length: 1024 }, () => 0),
+    });
+
+    const before = Date.now();
+    const result = await callMcpTool(runtime, "forget", {
+      account_id: "acct-1",
+      customer_id: "cust-1",
+      predicate_class: "configuration",
+    });
+    const after = Date.now();
+
+    const { forgotten } = result as { forgotten: string[] };
+    expect(forgotten.length).toBeGreaterThan(0);
+    expect(forgotten).not.toContain(otherFact.factId);
+    expect((await runtime.memoryService.store.getFactById(otherFact.factId))?.validTo).toBeNull();
+
+    for (const factId of forgotten) {
+      const fact = await runtime.memoryService.store.getFactById(factId);
+      expect(fact?.validTo).not.toBeNull();
+      expect(fact!.validTo!.getTime()).toBeGreaterThanOrEqual(before);
+      expect(fact!.validTo!.getTime()).toBeLessThanOrEqual(after);
+    }
   });
 });
