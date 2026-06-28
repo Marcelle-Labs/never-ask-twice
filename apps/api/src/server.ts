@@ -265,6 +265,28 @@ app.get("/static/index.css", (c) => {
   }
 });
 
+// Bundled Geist fonts — served locally so the demo works offline and in FC
+const ALLOWED_FONTS: Record<string, string> = {
+  "Geist-Variable.woff2": "./ui/fonts/Geist-Variable.woff2",
+  "GeistMono-Variable.woff2": "./ui/fonts/GeistMono-Variable.woff2",
+};
+
+app.get("/static/fonts/:file", (c) => {
+  const file = c.req.param("file");
+  const rel = ALLOWED_FONTS[file];
+  if (!rel) return c.notFound();
+  const fontPath = new URL(rel, import.meta.url).pathname;
+  try {
+    const font = readFileSync(fontPath);
+    return c.body(font as unknown as ReadableStream, 200, {
+      "Content-Type": "font/woff2",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    });
+  } catch {
+    return c.notFound();
+  }
+});
+
 app.get("/chat", async (c) => {
   const sessionId = c.req.query("sessionId") ?? randomUUID();
   const memoryOn = c.req.query("memory") !== "off";
