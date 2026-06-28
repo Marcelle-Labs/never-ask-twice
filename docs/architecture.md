@@ -12,7 +12,7 @@ Customer turn
      -> episodic memory for raw support events
      -> semantic memory for durable distilled facts
      -> forgetting logic for supersession and TTL expiry
-  -> Postgres + pgvector
+  -> Neon Postgres + pgvector (us-east-1)
   -> Qwen Cloud for embeddings, session distillation, and conflict adjudication
 ```
 
@@ -20,12 +20,13 @@ Customer turn
 
 | Component | Responsibility |
 |---|---|
-| `apps/api` | Hono API, local dev server, and Alibaba Function Compute handler. |
-| `src/memory` | Shared memory service used by API, eval, and MCP. |
-| `src/qwen` | Single Qwen Cloud client module using the DashScope OpenAI-compatible base URL. |
-| `src/db` | Drizzle schema plus SQL migration string for Postgres and pgvector. |
-| `src/mcp` | stdio MCP server exposing memory tools without forking memory logic. |
-| `eval` | Deterministic memory ON/OFF harness with hidden ground truth. |
+| `apps/api` | Hono API, local dev server, and Alibaba Function Compute handler (`server.handler`). |
+| `src/memory` | Shared memory service used by API, eval, and MCP. Implements all three tiers plus forgetting. |
+| `src/agent` | Support agent (`runSupportTurn`): recalls context, detects missing required predicates, returns cited facts. |
+| `src/qwen` | Single Qwen Cloud client using the DashScope OpenAI-compatible base URL. Handles embeddings, distillation, and conflict adjudication. |
+| `src/db` | Drizzle schema plus SQL migration for Postgres + pgvector (Neon). |
+| `src/mcp` | stdio MCP server exposing memory tools (`recall`, `distill_session`, `forget`) without duplicating memory logic. |
+| `eval` | Three-scenario deterministic harness: basic recall (Acme), supersession (Globex), TTL forgetting (Initech). Aggregate metrics across all three. |
 
 ## Memory tiers
 
