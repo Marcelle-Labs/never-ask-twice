@@ -13,8 +13,9 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 <body>
   <div class="app-container">
     <header>
-      <div class="logo">Never Ask Twice</div>
+      <div class="logo"><span class="logo-glyph">▰●▸</span>Never Ask Twice</div>
       <div style="display:flex;gap:var(--sp-3);align-items:center;">
+        <div class="vk-pip"></div>
         <span class="badge ${memoryOn ? 'done' : 'todo'}" id="memory-status">${memoryOn ? 'Memory ON' : 'Memory OFF'}</span>
         <button class="secondary-btn" onclick="toggleMemory()">${memoryOn ? 'Simulate Cold Start' : 'Enable Memory'}</button>
         <button id="close-session-btn" onclick="closeSession()">Close session</button>
