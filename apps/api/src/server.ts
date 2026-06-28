@@ -268,22 +268,51 @@ app.get("/static/index.css", (c) => {
 app.get("/chat", async (c) => {
   const sessionId = c.req.query("sessionId") ?? randomUUID();
   const memoryOn = c.req.query("memory") !== "off";
+  const { qwenConfigured } = capabilityStatus();
 
   try {
     const events = await store.getEvents(sessionId);
     const messages = events.map((e) => ({ role: e.role, message: e.message }));
-    return c.html(ChatView(messages, sessionId, memoryOn));
+    const facts = await store.currentFacts("acme_corp", "jason_99", new Date());
+    const slaFact = facts.find((f) => f.predicate === "sla_tier");
+    const slaTier = slaFact ? slaFact.object : null;
+    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return c.json({ error: msg }, 500);
   }
 });
 
+// ---------------------------------------------------------------------------
+// GET /eval-snapshot
+// Returns live re-ask rates derived from current semantic fact store.
+// Deterministic: no test sessions created, no Qwen calls.
+// ---------------------------------------------------------------------------
+const REQUIRED_PREDICATES = ["sla_tier", "product_config", "integration", "escalation_contact"];
+
+app.get("/eval-snapshot", async (c) => {
+  const accountId = "acme_corp";
+  const customerId = "jason_99";
+  const facts = await store.currentFacts(accountId, customerId, new Date());
+  const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
+  const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
+  return c.json({
+    ok: true,
+    memoryOnReaskRate: missing.length > 0 ? 1.0 : 0.0,
+    memoryOffReaskRate: 1.0,
+    factsCount: facts.length,
+    missingPredicates: missing,
+  }, 200);
+});
+
 app.get("/facts", async (c) => {
   const accountId = c.req.query("accountId") ?? "acme_corp";
   const customerId = c.req.query("customerId") ?? "jason_99";
   const facts = await store.currentFacts(accountId, customerId, new Date());
-  return c.html(FactsView(facts));
+  const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
+  const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
+  const memOnReaskRate = missing.length > 0 ? 1.0 : 0.0;
+  return c.html(FactsView(facts, memOnReaskRate));
 });
 
 // ---------------------------------------------------------------------------

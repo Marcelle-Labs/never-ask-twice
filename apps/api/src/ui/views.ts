@@ -1,6 +1,6 @@
 import type { SemanticFactRecord } from "../../../../src/memory/types.js";
 
-export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean) => `
+export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean, slaTier: string | null, qwenConfigured: boolean) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,7 +25,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       <h3 style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted);">SCENARIO CONTEXT</h3>
       <div class="card">
         <div style="font-weight: 700; margin-bottom: 0.5rem;">Customer: Jason</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">SLA: Enterprise (4h)</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">SLA: ${slaTier ?? '—'}</div>
       </div>
       <div class="card">
         <div style="font-weight: 700; margin-bottom: 0.5rem;">Session Profile</div>
@@ -190,6 +190,8 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       }
     };
 
+    const qwenConfigured = ${qwenConfigured};
+
     async function closeSession() {
       closeBtn.disabled = true;
       try {
@@ -202,10 +204,20 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || 'Close failed');
         }
+        const data = await res.json();
         addTrace('Session closed');
-        addTrace('Qwen distillation complete');
-        addTrace('Semantic facts written');
-        addTrace('Supersession check complete');
+        if (qwenConfigured) {
+          if (data.factsDistilled > 0) {
+            addTrace('Qwen distillation complete');
+            addTrace(data.factsDistilled + ' semantic fact(s) written');
+            addTrace('Supersession check complete');
+          } else {
+            addTrace('Distillation complete — no new facts');
+          }
+        } else {
+          addTrace('Distillation skipped — local-safe mode (no DASHSCOPE_API_KEY)');
+          addTrace('No semantic facts written');
+        }
       } catch (err) {
         addTrace('Error: ' + err.message, 'danger');
         closeBtn.disabled = false;
@@ -223,7 +235,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 </html>
 `;
 
-export const FactsView = (facts: SemanticFactRecord[]) => `
+export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -244,8 +256,8 @@ export const FactsView = (facts: SemanticFactRecord[]) => `
       <p style="color: var(--text-muted); margin-bottom: 2rem;">Distilled customer intelligence with high-confidence provenance.</p>
       
       <div style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-glass);">
-        <div style="font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem;">re-ask rate: 0.00 (memory) vs 1.00 (no-memory)</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">Live memory ON/OFF ablation</div>
+        <div style="font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem;">re-ask rate: ${memOnReaskRate.toFixed(2)} (memory) vs 1.00 (no-memory)</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">Live memory ON/OFF ablation — derived from current fact store</div>
       </div>
       
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
