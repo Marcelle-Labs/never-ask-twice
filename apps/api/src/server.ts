@@ -11,6 +11,7 @@ import type { QwenClient } from "../../../src/qwen/qwenClient.js";
 import { createQwenClient } from "../../../src/qwen/qwenClient.js";
 import { MEMORY_EMBEDDING_DIM } from "../../../src/contracts.js";
 import { MemoryService, SessionNotFoundError } from "../../../src/memory/service.js";
+import { runSupportTurn } from "../../../src/agent/supportAgent.js";
 import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
 import { ChatView, FactsView } from "./ui/views.js";
@@ -82,8 +83,8 @@ app.get("/health", (c) => c.json(capabilityStatus(), 200));
 
 // ---------------------------------------------------------------------------
 // POST /turn
-// Body: { accountId, customerId, sessionId?, role, message, ts? }
-// Auto-creates session on first turn.
+// Body: { accountId, customerId, sessionId?, role, message, ts?, memoryMode? }
+// Auto-creates session on first turn. Runs support agent for customer turns.
 // ---------------------------------------------------------------------------
 const TurnBodySchema = z.object({
   accountId: z.string().min(1),
@@ -92,6 +93,7 @@ const TurnBodySchema = z.object({
   role: z.enum(["customer", "agent"]),
   message: z.string().min(1),
   ts: z.string().optional(),
+  memoryMode: z.enum(["on", "off"]).optional().default("on"),
 });
 
 app.post("/turn", async (c) => {
@@ -110,12 +112,35 @@ app.post("/turn", async (c) => {
   const { accountId, customerId, role, message } = parsed.data;
   const sessionId = parsed.data.sessionId ?? randomUUID();
   const ts = parsed.data.ts ? new Date(parsed.data.ts) : new Date();
+  const memoryMode = parsed.data.memoryMode ?? "on";
 
   try {
     // Auto-create session if it doesn't exist, then enforce tenant ownership
     await memory.createSession({ accountId, customerId, sessionId });
     const event = await memory.appendTurn({ accountId, customerId, sessionId, role, message, ts });
-    return c.json({ ok: true, sessionId, eventId: event.eventId }, 201);
+
+    // Run support agent for customer messages
+    let agentResponse: Awaited<ReturnType<typeof runSupportTurn>> | null = null;
+    if (role === "customer") {
+      agentResponse = await runSupportTurn({
+        accountId,
+        customerId,
+        sessionId,
+        query: message,
+        memoryMode,
+        memoryService: memory,
+        now: ts,
+      });
+    }
+
+    return c.json({
+      ok: true,
+      sessionId,
+      eventId: event.eventId,
+      answer: agentResponse?.answer ?? null,
+      citedFacts: agentResponse?.citedFacts ?? [],
+      askedForMissingFacts: agentResponse?.askedForMissingFacts ?? false,
+    }, 201);
   } catch (err) {
     if (err instanceof SessionNotFoundError) {
       return c.json({ error: err.message }, 404);

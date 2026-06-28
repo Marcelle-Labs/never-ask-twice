@@ -70,6 +70,15 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     const trace = document.getElementById('trace-logs');
     const closeBtn = document.getElementById('close-session-btn');
 
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function addTrace(msg, status = 'done') {
       const el = document.createElement('div');
       el.className = 'card';
@@ -78,36 +87,51 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       trace.prepend(el);
     }
 
+    function getMemoryMode() {
+      return new URLSearchParams(window.location.search).get('memory') === 'off' ? 'off' : 'on';
+    }
+
     form.onsubmit = async (e) => {
       e.preventDefault();
       const msg = input.value;
       input.value = '';
-      
-      thread.innerHTML += \`<div class="message customer"><div class="content">\${msg}</div><div class="message-meta">Jason • Just now</div></div>\`;
+
+      thread.innerHTML += \`<div class="message customer"><div class="content">\${escapeHtml(msg)}</div><div class="message-meta">Jason • Just now</div></div>\`;
       thread.scrollTop = thread.scrollHeight;
-      
+
       try {
         const res = await fetch('/turn', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            accountId: 'acme_corp', 
-            customerId: 'jason_99', 
-            sessionId, 
-            role: 'customer', 
-            message: msg 
+          body: JSON.stringify({
+            accountId: 'acme_corp',
+            customerId: 'jason_99',
+            sessionId,
+            role: 'customer',
+            message: msg,
+            memoryMode: getMemoryMode(),
           })
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || 'Turn failed');
         }
-        
+
+        const data = await res.json();
+
         addTrace('Episodic event written');
-        addTrace('Embedding stored.');
-        
+        if (data.citedFacts && data.citedFacts.length > 0) {
+          addTrace(\`Recall: \${data.citedFacts.length} fact(s) cited\`);
+        } else {
+          addTrace('Recall: no prior facts (memory ' + getMemoryMode() + ')');
+        }
+        if (data.askedForMissingFacts) {
+          addTrace('Missing predicates detected — agent asked for more info');
+        }
+
         setTimeout(() => {
-          thread.innerHTML += \`<div class="message agent"><div class="content">I've noted that for your record. Is there anything else?</div><div class="message-meta">Nat • Just now</div></div>\`;
+          const reply = data.answer ?? 'Unable to process turn.';
+          thread.innerHTML += \`<div class="message agent"><div class="content">\${escapeHtml(reply)}</div><div class="message-meta">Nat • Just now</div></div>\`;
           thread.scrollTop = thread.scrollHeight;
         }, 600);
       } catch (err) {
