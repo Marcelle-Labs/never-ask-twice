@@ -1,3 +1,5 @@
 {
-  "managerSummaryLine": "re-ask rate: 0.00 (memory) vs 1.00 (no-memory)"
+  "managerSummaryLine": "re-ask rate: 0.00 (memory) vs 1.00 (no-memory)",
+  "supersessionVerified": true,
+  "forgettingVerified": true
 }

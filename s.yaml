@@ -1,39 +1,31 @@
 edition: 3.0.0
 name: never-ask-twice
-
-vars:
-  region: ${env(ALIBABA_REGION)}
-  service:
-    name: never-ask-twice-api
-    description: Never Ask Twice — Enterprise Support MemoryAgent on Qwen Cloud
+access: default
 
 resources:
   api:
     component: fc3
     props:
-      region: ${vars.region}
-      service:
-        name: ${vars.service.name}
-        description: ${vars.service.description}
-      function:
-        name: never-ask-twice-api
-        runtime: nodejs20
-        timeout: 60
-        memorySize: 512
-        handler: dist/apps/api/src/server.handler
-        code: ./
-        environmentVariables:
-          DATABASE_URL: ${env(DATABASE_URL)}
-          DASHSCOPE_API_KEY: ${env(DASHSCOPE_API_KEY)}
-          QWEN_BASE_URL: ${env(QWEN_BASE_URL)}
-          QWEN_CHAT_MODEL: ${env(QWEN_CHAT_MODEL)}
-          QWEN_EMBEDDING_MODEL: ${env(QWEN_EMBEDDING_MODEL)}
-          QWEN_EMBEDDING_DIM: ${env(QWEN_EMBEDDING_DIM)}
-          MEMORY_TOKEN_BUDGET: ${env(MEMORY_TOKEN_BUDGET)}
+      region: ${env(ALIBABA_REGION)}
+      functionName: never-ask-twice-api
+      description: Never Ask Twice — Enterprise Support MemoryAgent on Qwen Cloud
+      runtime: nodejs20
+      timeout: 60
+      memorySize: 512
+      handler: dist/apps/api/src/server.handler
+      code: ./
+      environmentVariables:
+        DATABASE_URL: ${env(DATABASE_URL)}
+        DASHSCOPE_API_KEY: ${env(DASHSCOPE_API_KEY)}
+        QWEN_BASE_URL: ${env(QWEN_BASE_URL)}
+        QWEN_CHAT_MODEL: ${env(QWEN_CHAT_MODEL)}
+        QWEN_EMBEDDING_MODEL: ${env(QWEN_EMBEDDING_MODEL)}
+        QWEN_EMBEDDING_DIM: ${env(QWEN_EMBEDDING_DIM)}
+        MEMORY_TOKEN_BUDGET: ${env(MEMORY_TOKEN_BUDGET)}
       triggers:
-        - name: httpTrigger
-          type: http
-          config:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
             authType: anonymous
             methods:
               - GET
