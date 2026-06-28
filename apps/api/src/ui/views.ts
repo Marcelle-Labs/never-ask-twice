@@ -1,9 +1,6 @@
-/**
- * Never Ask Twice — UI Templates
- * Plain-HTML views for the demo session.
- */
+import type { SemanticFactRecord } from "../../../../src/memory/types.js";
 
-export const ChatView = (messages: any[], sessionId: string, memoryOn: boolean) => `
+export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -151,7 +148,7 @@ export const ChatView = (messages: any[], sessionId: string, memoryOn: boolean) 
 </html>
 `;
 
-export const FactsView = (facts: any[]) => `
+export const FactsView = (facts: SemanticFactRecord[]) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>

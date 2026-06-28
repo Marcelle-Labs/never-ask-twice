@@ -1,7 +1,7 @@
 import type { MemoryPredicate } from "../contracts.js";
 import type { MemoryService } from "../memory/service.js";
 
-const requiredPredicates: MemoryPredicate[] = [
+const DEFAULT_REQUIRED_PREDICATES: MemoryPredicate[] = [
   "sla_tier",
   "product_config",
   "integration",
@@ -23,7 +23,9 @@ export async function runSupportTurn(input: {
   memoryMode: "on" | "off";
   memoryService: MemoryService;
   now: Date;
+  requiredPredicates?: MemoryPredicate[];
 }) {
+  const requiredPredicates = input.requiredPredicates ?? DEFAULT_REQUIRED_PREDICATES;
   const recall = await input.memoryService.recall({
     accountId: input.accountId,
     customerId: input.customerId,

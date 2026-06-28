@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { spawn } from "node:child_process";
-import { execFileSync } from "node:child_process";
 
 import { createSeededMcpRuntime } from "../src/mcp/bootstrap.js";
 import { callMcpTool, recallMemory } from "../src/mcp/runtime.js";

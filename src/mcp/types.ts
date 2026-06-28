@@ -4,6 +4,7 @@ export interface RecallMemoryArgs {
   query: string;
   session_id?: string;
   now?: string; // ISO timestamp for deterministic testing
+  token_budget?: number;
 }
 
 export interface WriteMemoryArgs {

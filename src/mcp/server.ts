@@ -3,6 +3,7 @@ import readline from "node:readline";
 import { createSeededMcpRuntime } from "./bootstrap.js";
 import { callMcpTool } from "./runtime.js";
 import { mcpToolDefinitions } from "./tools.js";
+import type { DistillSessionArgs, ForgetArgs, RecallMemoryArgs, WriteMemoryArgs } from "./types.js";
 
 interface RequestMessage {
   id: string | number;
@@ -38,7 +39,7 @@ async function main() {
       if (request.method === "call_tool") {
         const toolName = String(request.params?.name ?? "");
         const args = (request.params?.args as Record<string, unknown> | undefined) ?? {};
-        const result = await callMcpTool(runtime, toolName, args as never);
+        const result = await callMcpTool(runtime, toolName, args as unknown as RecallMemoryArgs | WriteMemoryArgs | DistillSessionArgs | ForgetArgs);
         process.stdout.write(
           JSON.stringify({
             id: request.id,

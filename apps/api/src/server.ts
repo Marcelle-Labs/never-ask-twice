@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
@@ -68,7 +69,7 @@ function capabilityStatus() {
 const db = getDb();
 const store = new DrizzleMemoryStore(db);
 const qwen = buildQwenClient();
-const memory = new MemoryService(store as never, qwen);
+const memory = new MemoryService(store, qwen);
 
 const app = new Hono();
 app.use("*", logger());
@@ -207,7 +208,7 @@ app.post("/recall", async (c) => {
     return c.json(
       {
         ok: true,
-        bundle: result.bundle.map((item: any) => ({
+        bundle: result.bundle.map((item) => ({
           kind: item.kind,
           score: item.score,
           summary: item.summary,
@@ -228,11 +229,10 @@ app.post("/recall", async (c) => {
 // ---------------------------------------------------------------------------
 
 // Static CSS
-app.get("/static/index.css", async (c) => {
+app.get("/static/index.css", (c) => {
   const cssPath = new URL("./ui/index.css", import.meta.url).pathname;
   try {
-    const fs = await import("node:fs");
-    const css = fs.readFileSync(cssPath, "utf8");
+    const css = readFileSync(cssPath, "utf8");
     return c.text(css, 200, { "Content-Type": "text/css" });
   } catch (err) {
     console.error("[ui] Failed to read CSS:", err);
@@ -243,12 +243,15 @@ app.get("/static/index.css", async (c) => {
 app.get("/chat", async (c) => {
   const sessionId = c.req.query("sessionId") ?? randomUUID();
   const memoryOn = c.req.query("memory") !== "off";
-  
-  // For the demo, we start with an empty thread or fetch session events
-  const events = await store.getEvents(sessionId);
-  const messages = events.map((e: any) => ({ role: e.role, message: e.message }));
-  
-  return c.html(ChatView(messages, sessionId, memoryOn));
+
+  try {
+    const events = await store.getEvents(sessionId);
+    const messages = events.map((e) => ({ role: e.role, message: e.message }));
+    return c.html(ChatView(messages, sessionId, memoryOn));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
 });
 
 app.get("/facts", async (c) => {

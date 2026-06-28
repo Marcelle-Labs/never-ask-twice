@@ -32,7 +32,7 @@ export async function recallMemory(runtime: McpRuntime, args: RecallMemoryArgs) 
     customerId: args.customer_id,
     sessionId: args.session_id,
     query: args.query,
-    tokenBudget: 1200,
+    tokenBudget: args.token_budget ?? Number(process.env.MEMORY_TOKEN_BUDGET ?? 1200),
     now: args.now ? parseTimestamp(args.now, "now") : new Date(),
   });
 }
