@@ -91,12 +91,61 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       return new URLSearchParams(window.location.search).get('memory') === 'off' ? 'off' : 'on';
     }
 
+    // Parse "subject predicate object" summary → "predicate · object" chip label
+    function chipLabel(fact) {
+      var parts = fact.split(' ');
+      return parts.length >= 3
+        ? escapeHtml(parts[1]) + ' · ' + escapeHtml(parts.slice(2).join(' '))
+        : escapeHtml(fact);
+    }
+
+    // Add a tagged trace row so fireRecallBeat can target it by fact identity
+    function addFactTrace(fact) {
+      var el = document.createElement('div');
+      el.className = 'card';
+      el.style.fontSize = '0.75rem';
+      el.dataset.traceFact = fact;
+      el.innerHTML = '<div class="badge" style="margin-bottom:0.5rem;background:hsla(180,80%,50%,0.2);color:var(--accent)">RECALL</div>'
+        + '<div style="font-family:monospace">' + chipLabel(fact) + '</div>';
+      trace.prepend(el);
+    }
+
+    // Single shared beat: chip render + trace-row glow fire in one synchronous call.
+    // Both effects are driven here — not from two separate handlers.
+    function fireRecallBeat(answer, citedFacts) {
+      var chipsHtml = citedFacts.length > 0
+        ? '<div class="recall-chips">'
+            + citedFacts.map(function(f) { return '<span class="recall-chip">' + chipLabel(f) + '</span>'; }).join('')
+            + '</div>'
+        : '';
+
+      thread.innerHTML += '<div class="message agent">'
+        + '<div class="content">' + escapeHtml(answer) + chipsHtml + '</div>'
+        + '<div class="message-meta">Nat • Just now</div>'
+        + '</div>';
+      thread.scrollTop = thread.scrollHeight;
+
+      // Glow the matching trace rows — same synchronous call as message render
+      citedFacts.forEach(function(fact) {
+        trace.querySelectorAll('[data-trace-fact]').forEach(function(row) {
+          if (row.dataset.traceFact === fact) {
+            row.classList.remove('recall-glow');
+            void row.offsetWidth; // force reflow to restart animation
+            row.classList.add('recall-glow');
+          }
+        });
+      });
+    }
+
     form.onsubmit = async (e) => {
       e.preventDefault();
       const msg = input.value;
       input.value = '';
 
-      thread.innerHTML += \`<div class="message customer"><div class="content">\${escapeHtml(msg)}</div><div class="message-meta">Jason • Just now</div></div>\`;
+      thread.innerHTML += '<div class="message customer">'
+        + '<div class="content">' + escapeHtml(msg) + '</div>'
+        + '<div class="message-meta">Jason • Just now</div>'
+        + '</div>';
       thread.scrollTop = thread.scrollHeight;
 
       try {
@@ -120,20 +169,22 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         const data = await res.json();
 
         addTrace('Episodic event written');
+
+        // Pre-populate tagged trace rows immediately so the panel shows activity
         if (data.citedFacts && data.citedFacts.length > 0) {
-          addTrace(\`Recall: \${data.citedFacts.length} fact(s) cited\`);
+          data.citedFacts.forEach(addFactTrace);
         } else {
           addTrace('Recall: no prior facts (memory ' + getMemoryMode() + ')');
         }
         if (data.askedForMissingFacts) {
-          addTrace('Missing predicates detected — agent asked for more info');
+          addTrace('Missing predicates — agent requesting context');
         }
 
-        setTimeout(() => {
-          const reply = data.answer ?? 'Unable to process turn.';
-          thread.innerHTML += \`<div class="message agent"><div class="content">\${escapeHtml(reply)}</div><div class="message-meta">Nat • Just now</div></div>\`;
-          thread.scrollTop = thread.scrollHeight;
+        // 600ms beat: fireRecallBeat drives chips + glow together from one call
+        setTimeout(function() {
+          fireRecallBeat(data.answer || 'Unable to process turn.', data.citedFacts || []);
         }, 600);
+
       } catch (err) {
         addTrace('Error: ' + err.message, 'danger');
       }

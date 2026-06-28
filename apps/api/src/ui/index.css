@@ -209,6 +209,37 @@ button:active {
 .badge.done { background: hsla(150, 80%, 50%, 0.2); color: var(--success); }
 .badge.todo { background: hsla(40, 80%, 60%, 0.2); color: var(--warning); }
 
+/* Recall chips — inline in agent messages */
+.recall-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+}
+
+.recall-chip {
+  display: inline-flex;
+  align-items: center;
+  background: hsla(180, 80%, 50%, 0.12);
+  border: 1px solid hsla(180, 80%, 50%, 0.35);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+/* Trace row glow — 320ms per design spec, fires on recall beat */
+@keyframes traceGlow {
+  0%   { border-color: hsla(180, 80%, 50%, 0.9); box-shadow: 0 0 16px hsla(180, 80%, 50%, 0.45), inset 0 0 8px hsla(180, 80%, 50%, 0.1); }
+  100% { border-color: var(--border); box-shadow: none; }
+}
+
+.card.recall-glow {
+  animation: traceGlow 320ms ease-out forwards;
+}
+
 /* Animation Utils */
 .glow-text {
   text-shadow: 0 0 10px var(--primary-glow);
