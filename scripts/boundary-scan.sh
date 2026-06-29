@@ -59,6 +59,7 @@ done < <(find . \
   -path "./node_modules" -prune -o \
   -path "./dist" -prune -o \
   -path "./coverage" -prune -o \
+  -path "./docs/B2B support agent memory design" -prune -o \
   -type f -print)
 
 echo "boundary-scan: clean"

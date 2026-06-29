@@ -7,3 +7,7 @@ coverage
 .fc
 .windsurf/mcp.json
 .windsurf/rules/.DS_Store
+
+# Private design/research docs — stay local, never push
+docs/B2B support agent memory design/
+docs/*.pdf
