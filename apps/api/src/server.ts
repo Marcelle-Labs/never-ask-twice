@@ -12,6 +12,7 @@ import { MEMORY_EMBEDDING_DIM } from "../../../src/contracts.js";
 import { MemoryService, SessionNotFoundError } from "../../../src/memory/service.js";
 import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
+import { brandFaviconSvg } from "./ui/brand.js";
 import { ChatView, FactsView } from "./ui/views.js";
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,11 @@ app.use("*", cors());
 // GET /health
 // ---------------------------------------------------------------------------
 app.get("/health", (c) => c.json(capabilityStatus(), 200));
+
+app.get("/favicon.svg", (c) => c.text(brandFaviconSvg, 200, {
+  "Cache-Control": "public, max-age=31536000, immutable",
+  "Content-Type": "image/svg+xml; charset=utf-8",
+}));
 
 // ---------------------------------------------------------------------------
 // POST /turn

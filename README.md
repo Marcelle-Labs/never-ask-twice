@@ -1,5 +1,7 @@
 # Never Ask Twice
 
+![Never Ask Twice](docs/assets/brand/README-hero.svg)
+
 Enterprise Support MemoryAgent on Qwen Cloud
 
 ![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
@@ -15,6 +17,10 @@ Never Ask Twice is a production-shaped B2B support memory agent that remembers c
 The demo agent is **Nat**. Nat is powered by **NATE** — the Never Ask Twice Engine — a scoped memory layer that turns support conversations into durable, auditable customer context.
 
 Built for the Qwen Cloud Global AI Hackathon — Track: MemoryAgent.
+
+## Brand assets
+
+Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/brand). The public tagline is **Support that remembers.**
 
 ## Status
 
