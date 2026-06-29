@@ -1,4 +1,5 @@
 import type { SemanticFactRecord } from "../../../../src/memory/types.js";
+import { BrandLockup } from "./brand.js";
 
 export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean, slaTier: string | null, qwenConfigured: boolean) => `
 <!DOCTYPE html>
@@ -6,16 +7,15 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NAT — Chat</title>
+  <title>Never Ask Twice — Chat</title>
   <link rel="stylesheet" href="/static/index.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
   <div class="app-container">
     <header>
-      <div class="logo"><span class="logo-glyph">▰●▸</span>Never Ask Twice</div>
+      ${BrandLockup({ compact: true })}
       <div style="display:flex;gap:var(--sp-3);align-items:center;">
-        <div class="vk-pip"></div>
         <span class="badge ${memoryOn ? 'done' : 'todo'}" id="memory-status">${memoryOn ? 'Memory ON' : 'Memory OFF'}</span>
         <button class="secondary-btn" onclick="toggleMemory()">${memoryOn ? 'Simulate Cold Start' : 'Enable Memory'}</button>
         <button id="close-session-btn" onclick="closeSession()">Close session</button>
@@ -314,13 +314,14 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NAT — Manager Dashboard</title>
+  <title>Never Ask Twice — Knowledge Manager</title>
   <link rel="stylesheet" href="/static/index.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
   <div class="page-simple">
     <header>
-      <div class="logo">Manager Dashboard</div>
+      ${BrandLockup({ compact: true })}
       <a href="/chat" style="color:var(--text-muted);font-size:var(--text-sm);text-decoration:none;">← Back to Chat</a>
     </header>
 
