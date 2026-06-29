@@ -43,6 +43,11 @@ while IFS= read -r file; do
     ./coverage/*) continue ;;
   esac
 
+  # Skip any .env file that isn't tracked by git (local secrets, never should be scanned)
+  if [[ "$(basename "$file")" == ".env" ]] && ! git ls-files --error-unmatch "${file#./}" >/dev/null 2>&1; then
+    continue
+  fi
+
   if [[ "$(basename "$file")" == ".env" ]] && git ls-files --error-unmatch "${file#./}" >/dev/null 2>&1; then
     echo "boundary-scan: forbidden file $file"
     exit 1
