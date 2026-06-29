@@ -1,3 +1,5 @@
+import { BrandLockup } from "./brand.js";
+
 /**
  * Never Ask Twice — UI Templates
  * Plain-HTML views for the demo session.
@@ -9,14 +11,14 @@ export const ChatView = (messages: any[], sessionId: string, memoryOn: boolean) 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NAT — Chat</title>
+  <title>Never Ask Twice — Chat</title>
   <link rel="stylesheet" href="/static/index.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
   <div class="app-container">
     <header>
-      <div class="logo">Never Ask Twice</div>
+      ${BrandLockup({ compact: true })}
       <div style="display: flex; gap: 1rem; align-items: center;">
         <span class="badge ${memoryOn ? 'done' : 'todo'}" id="memory-status">${memoryOn ? 'Memory ON' : 'Memory OFF'}</span>
         <button class="secondary-btn" onclick="toggleMemory()">${memoryOn ? 'Simulate Cold Start' : 'Enable Memory'}</button>
@@ -157,13 +159,14 @@ export const FactsView = (facts: any[]) => `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NAT — Knowledge Manager</title>
+  <title>Never Ask Twice — Knowledge Manager</title>
   <link rel="stylesheet" href="/static/index.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
   <div class="app-container" style="grid-template-columns: 1fr; grid-template-rows: 60px 1fr; grid-template-areas: 'header' 'main';">
     <header>
-      <div class="logo">Knowledge Manager</div>
+      ${BrandLockup({ compact: true })}
       <a href="/chat" style="color: var(--text-muted); text-decoration: none;">← Back to Chat</a>
     </header>
     
