@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Never Ask Twice">
-  <rect width="64" height="64" rx="14" fill="#ffffff"/>
+  <rect width="64" height="64" rx="15" fill="#0A0A0A"></rect>
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 21 C10 14 15 12 22 12 H31 C42 12 43 28 50 30" stroke="#303030" stroke-width="6"/>
-    <path d="M10 43 C10 50 15 52 22 52 H31 C42 52 43 36 50 34" stroke="#8A8F98" stroke-width="6"/>
-    <path d="M43 32 H57" stroke="#4ADE80" stroke-width="7"/>
-    <path d="M50 23 L58 32 L50 41" stroke="#4ADE80" stroke-width="7"/>
+    <path d="M13 21 C26 21 24 32 35 32" stroke="#FAFAFA" stroke-width="7.5"></path>
+    <path d="M13 43 C26 43 24 32 35 32" stroke="#8A8F98" stroke-width="7.5"></path>
+    <path d="M33 32 H49" stroke="#4ADE80" stroke-width="8.5"></path>
+    <path d="M43 23 L56 32 L43 41" stroke="#4ADE80" stroke-width="8.5"></path>
   </g>
 </svg>

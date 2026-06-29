@@ -430,6 +430,52 @@ button:active { transform: scale(0.97); }
   margin-bottom: var(--sp-4);
 }
 
+/* ── Brand lockup ─────────────────────────────────────── */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.brand-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.brand-lockup-compact .brand-mark {
+  width: 36px;
+  height: 36px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: var(--text-base);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.brand-descriptor {
+  font-size: var(--text-2xs);
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+
 /* ── Brand glyph + status pip ─────────────────────────── */
 .logo-glyph {
   font-family: var(--font-mono);

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="t d">
+  <title id="t">Never Ask Twice icon</title>
+  <desc id="d">Two conversation paths converging into one remembered green path forward.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 30 C38 30 36 50 54 50" stroke="#303030" stroke-width="12"></path>
+    <path d="M18 70 C38 70 36 50 54 50" stroke="#8A8F98" stroke-width="12"></path>
+    <path d="M52 50 H78" stroke="#4ADE80" stroke-width="13"></path>
+    <path d="M68 36 L86 50 L68 64" stroke="#4ADE80" stroke-width="13"></path>
+  </g>
+</svg>

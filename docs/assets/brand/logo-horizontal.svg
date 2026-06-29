@@ -1,16 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" role="img" aria-labelledby="title desc">
-  <title id="title">Never Ask Twice horizontal logo</title>
-  <desc id="desc">Never Ask Twice logo with the official converging conversation mark and product descriptor.</desc>
-  <g transform="translate(30 40) scale(0.95)">
-    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M28 40 C28 25 38 22 52 22 H102 C132 22 139 57 170 66" stroke="#303030" stroke-width="14"/>
-      <path d="M28 100 C28 115 38 118 52 118 H102 C132 118 139 83 170 74" stroke="#8A8F98" stroke-width="14"/>
-      <path d="M156 70 H212" stroke="#4ADE80" stroke-width="16"/>
-      <path d="M188 42 L214 70 L188 98" stroke="#4ADE80" stroke-width="16"/>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 690 140" role="img" aria-labelledby="t d">
+  <title id="t">Never Ask Twice horizontal logo</title>
+  <desc id="d">Never Ask Twice single-line lockup: converging-paths mark with wordmark.</desc>
+  <defs></defs>
+  <g transform="translate(12 20) scale(1.0)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 30 C38 30 36 50 54 50" stroke="#303030" stroke-width="12"></path>
+    <path d="M18 70 C38 70 36 50 54 50" stroke="#8A8F98" stroke-width="12"></path>
+    <path d="M52 50 H78" stroke="#4ADE80" stroke-width="13"></path>
+    <path d="M68 36 L86 50 L68 64" stroke="#4ADE80" stroke-width="13"></path>
   </g>
-  <g fill="#303030" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-    <text x="295" y="104" font-size="64" font-weight="800" letter-spacing="-2.5">Never Ask Twice</text>
-    <text x="300" y="154" font-size="27" font-weight="500" letter-spacing="4" fill="#303030">Enterprise Support MemoryAgent</text>
-  </g>
+  <text x="120" y="90" font-family="&#39;Geist&#39;,&#39;Geist Sans&#39;,ui-sans-serif,system-ui,-apple-system,&#39;Segoe UI&#39;,sans-serif" font-size="56" font-weight="600" letter-spacing="-1.7" fill="#303030">Never Ask Twice</text>
 </svg>

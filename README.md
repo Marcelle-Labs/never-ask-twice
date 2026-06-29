@@ -1,6 +1,6 @@
 # Never Ask Twice
 
-![Never Ask Twice](docs/assets/brand/README-hero.svg)
+![Never Ask Twice](docs/assets/brand/README-hero.png)
 
 Enterprise Support MemoryAgent on Qwen Cloud
 
@@ -20,7 +20,7 @@ Built for the Qwen Cloud Global AI Hackathon — Track: MemoryAgent.
 
 ## Brand assets
 
-Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/brand). The public tagline is **Support that remembers.**
+Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/brand). The public tagline is **Support that remembers.** Descriptor: **Enterprise Support MemoryAgent.**
 
 ## Status
 

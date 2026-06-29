@@ -97,7 +97,7 @@ async function runScenario1(mode: "on" | "off"): Promise<AgentEvalResult> {
 
   const expectedFacts = groundTruth.expectedManagerFacts;
   const citedExpected = agentTurn.citedFacts.filter((fact) =>
-    expectedFacts.some((expected) => fact.includes(expected)),
+    expectedFacts.some((expected) => fact.summary.includes(expected)),
   );
 
   return {

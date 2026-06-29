@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 770 200" role="img" aria-labelledby="t d">
+  <title id="t">Never Ask Twice primary logo</title>
+  <desc id="d">Never Ask Twice lockup: converging-paths mark with wordmark and descriptor.</desc>
+  <defs></defs>
+  <g transform="translate(16 40) scale(1.2)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 30 C38 30 36 50 54 50" stroke="#303030" stroke-width="12"></path>
+    <path d="M18 70 C38 70 36 50 54 50" stroke="#8A8F98" stroke-width="12"></path>
+    <path d="M52 50 H78" stroke="#4ADE80" stroke-width="13"></path>
+    <path d="M68 36 L86 50 L68 64" stroke="#4ADE80" stroke-width="13"></path>
+  </g>
+  <text x="150" y="104" font-family="&#39;Geist&#39;,&#39;Geist Sans&#39;,ui-sans-serif,system-ui,-apple-system,&#39;Segoe UI&#39;,sans-serif" font-size="60" font-weight="600" letter-spacing="-1.9" fill="#303030">Never Ask Twice</text>
+  <text x="152" y="146" font-family="&#39;Geist Mono&#39;,ui-monospace,&#39;SFMono-Regular&#39;,Menlo,monospace" font-size="16.5" font-weight="500" letter-spacing="2.6" fill="#8A8F98">ENTERPRISE SUPPORT MEMORYAGENT</text>
+</svg>

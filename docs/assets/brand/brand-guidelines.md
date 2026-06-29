@@ -1,31 +1,37 @@
-# Never Ask Twice Brand Guidelines
+# Never Ask Twice — Brand Kit v2
 
-This is the locked identity system for the Qwen MemoryAgent submission.
+Clean-vector rebuild of the locked identity. The mark is now true geometry (no AI/mockup raster), the small sizes are hand-tuned, and the wordmark is set in **Geist** rather than generic Inter.
 
-## Brand idea
+## What changed from v1
 
-Never Ask Twice turns repeated support context into one remembered path forward.
+- **Mark redrawn as clean vector.** The two paths no longer tangle into a knot — they converge cleanly into a single green arrow forward. Reads instantly at every size.
+- **Favicon hand-tuned for small sizes.** Thicker strokes, larger arrowhead, simplified curves, no tiny internal detail. Legible at 16px on dark and light.
+- **Icon sits tighter to the wordmark** in the primary lockup — reads as one unit.
+- **Type system named:** Geist (wordmark/headings, 500–700) + Geist Mono (captions, proof, chrome).
+- **Devpost copy unchanged** — Never Ask Twice / Support that remembers. / 0.00 repeat-question rate.
 
-The mark represents two conversation paths converging into a single green path. The green arrow is reserved for remembered context and forward resolution.
+## Assets
 
-## Core assets
-
-| Asset | Use |
+| File | Use |
 |---|---|
-| `logo-horizontal.svg` | README hero, docs, video title cards. |
-| `logo-compact.svg` | Compact horizontal areas, headers, small docs usage. |
-| `mark.svg` | Icon-only surfaces. |
-| `favicon.svg` | Browser favicon / app icon. |
-| `README-hero.svg` | README brand hero image. |
-| `devpost-tile.svg` | Devpost tile / social preview source. |
+| `logo-icon.svg` | Icon-only surfaces. Pure geometry. |
+| `logo-primary.svg` | Primary lockup — icon + wordmark + descriptor. |
+| `logo-horizontal.svg` | Single-line lockup — icon + wordmark only. Headers, nav. |
+| `favicon.svg` | Browser favicon / app tile (dark, rounded). |
+| `favicon-32.png` · `favicon-16.png` | Rasterized favicons. |
+| `logo-devpost-tile.png` | 1200×630 Devpost tile (light). |
+| `logo-social-preview.png` | 1200×630 social/OG preview (dark). |
+| `README-hero.png` | 1200×320 README hero (dark). |
+
+> SVG lockups use Geist via `font-family`; open directly in a browser or install Geist in your design tool for exact rendering. The PNGs are pixel-baked with Geist for GitHub/Devpost where webfonts are stripped.
 
 ## Colors
 
 | Token | Hex | Use |
 |---|---|---|
-| Charcoal | `#303030` | Wordmark, primary path, enterprise trust. |
-| Gray | `#8A8F98` | Prior context, secondary path, support text. |
-| Memory green | `#4ADE80` | Remembered path, proof, recall/action accent. |
+| Charcoal | `#303030` | Wordmark, primary (current) path. |
+| Gray | `#8A8F98` | Prior-context path, secondary text. |
+| Memory green | `#4ADE80` | Remembered path, proof, action accent. |
 
 ## Copy system
 
@@ -34,20 +40,8 @@ The mark represents two conversation paths converging into a single green path. 
 - Public tagline: **Support that remembers.**
 - Proof line: **0.00 repeat-question rate**
 
-## Usage rules
+## Rules
 
-Do:
+Do: keep the arrow solid `#4ADE80`; wordmark charcoal; let the two paths merge into one arrow; one eye-width of clear space.
 
-- Keep the arrow solid `#4ADE80`.
-- Keep the wordmark charcoal.
-- Use the mark on white or very light backgrounds when possible.
-- Use `Support that remembers.` for Devpost and video-intro moments.
-- Use `Enterprise Support MemoryAgent` in README/docs/product context.
-
-Do not:
-
-- Add gradients, glows, or drop shadows to the mark.
-- Turn any word in the wordmark green.
-- Add chat dots, decorative nodes, brains, databases, or extra memory icons to the primary mark.
-- Stretch or rotate the mark.
-- Use the logo to imply live deployment proof before it exists.
+Don't: gradients/glows/shadows on the mark; turn any word of the wordmark green; add chat dots, brains, databases, or extra icons; stretch, rotate, or recolor.
