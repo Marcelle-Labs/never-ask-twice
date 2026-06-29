@@ -82,6 +82,7 @@ describe("agent-loop", () => {
     });
 
     expect(response.askedForMissingFacts).toBe(false);
-    expect(response.answer).toContain("Routing this to the documented escalation contact now.");
+    expect(response.answer).toContain("I'll route this to Priya now.");
+    expect(response.answer).not.toMatch(/sla_tier|product_config|escalation_contact/);
   });
 });

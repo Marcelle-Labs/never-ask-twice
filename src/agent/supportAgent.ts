@@ -8,6 +8,41 @@ const DEFAULT_REQUIRED_PREDICATES: MemoryPredicate[] = [
   "escalation_contact",
 ];
 
+// How to ask for a missing fact — polite question phrase, no schema names
+const PREDICATE_QUESTION: Partial<Record<string, string>> = {
+  sla_tier:           "what SLA tier you're on",
+  product_config:     "what product configuration you're using",
+  integration:        "which integration you're working with",
+  escalation_contact: "who your escalation contact is",
+  auth_requirement:   "what authentication method you require",
+  technical_contact:  "who your technical contact is",
+  timezone:           "what timezone you're in",
+};
+
+// How to mention a known fact inline — natural prose, no schema names
+const PREDICATE_MENTION: Partial<Record<string, (obj: string) => string>> = {
+  sla_tier:           (obj) => (obj === "enterprise" || obj === "gold") ? "Gold SLA" : `${obj} SLA`,
+  integration:        (obj) => `${obj} integration`,
+  product_config:     (obj) => obj,
+  escalation_contact: (obj) => obj,
+  auth_requirement:   (obj) => `${obj} auth`,
+  technical_contact:  (obj) => obj,
+  timezone:           (obj) => `${obj} timezone`,
+};
+
+function humanMissingQuestion(predicates: string[]): string {
+  const phrases = predicates.map((p) => PREDICATE_QUESTION[p] ?? p.replace(/_/g, " "));
+  if (phrases.length === 1) return `To help you, could you confirm ${phrases[0]}?`;
+  const last = phrases[phrases.length - 1];
+  const rest = phrases.slice(0, -1);
+  return `To get started, I'll need a few details — ${rest.join(", ")}, and ${last}. Happy to help once I have those.`;
+}
+
+function humanFactMention(predicate: string, object: string): string {
+  const fn = PREDICATE_MENTION[predicate];
+  return fn ? fn(object) : `${predicate.replace(/_/g, " ")} ${object}`;
+}
+
 export interface CitedFact {
   summary: string;
   predicate: string;
@@ -59,18 +94,20 @@ export async function runSupportTurn(input: {
 
   if (missingPredicates.length > 0) {
     return {
-      answer: `Before I act, I need your ${missingPredicates.join(", ")}.`,
+      answer: humanMissingQuestion(missingPredicates),
       askedForMissingFacts: true,
       citedFacts: facts,
       hallucinatedFacts: [],
     } satisfies AgentResponse;
   }
 
-  const answer = [
-    "I have enough context to proceed.",
-    ...facts.map((fact) => `Known: ${fact.summary}`),
-    "Routing this to the documented escalation contact now.",
-  ].join(" ");
+  const escalationFact = facts.find((f) => f.predicate === "escalation_contact");
+  const contextFacts = facts.filter((f) => f.predicate !== "escalation_contact");
+  const contextMentions = contextFacts.map((f) => humanFactMention(f.predicate, f.object));
+  const routingLine = escalationFact ? `I'll route this to ${escalationFact.object} now.` : "Routing this now.";
+  const answer = contextMentions.length > 0
+    ? `I have your account details on file — ${contextMentions.join(", ")}. ${routingLine}`
+    : routingLine;
 
   return {
     answer,
