@@ -3,7 +3,7 @@
   "private": false,
   "type": "module",
   "version": "0.1.0",
-  "description": "Enterprise Support MemoryAgent on Qwen Cloud that remembers customer context across sessions and proves improvement with a live re-ask-rate ablation.",
+  "description": "Enterprise Support MemoryAgent on Qwen Cloud that remembers customer context across sessions and proves improvement with a deterministic re-ask-rate ablation.",
   "license": "Apache-2.0",
   "author": "Qwynn Marcelle",
   "homepage": "https://github.com/marcelle-labs/never-ask-twice#readme",
