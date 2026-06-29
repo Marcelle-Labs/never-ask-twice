@@ -8,10 +8,16 @@ const DEFAULT_REQUIRED_PREDICATES: MemoryPredicate[] = [
   "escalation_contact",
 ];
 
+export interface CitedFact {
+  summary: string;
+  predicate: string;
+  object: string;
+}
+
 export interface AgentResponse {
   answer: string;
   askedForMissingFacts: boolean;
-  citedFacts: string[];
+  citedFacts: CitedFact[];
   hallucinatedFacts: string[];
 }
 
@@ -40,12 +46,15 @@ export async function runSupportTurn(input: {
       ? recall.bundle
       : recall.bundle.filter((item) => item.kind === "working");
 
-  const facts = effectiveBundle
+  const facts: CitedFact[] = effectiveBundle
     .filter((item) => item.kind !== "episodic")
-    .map((item) => item.summary);
+    .map((item) => {
+      const payload = item.payload as { predicate: string; object: string };
+      return { summary: item.summary, predicate: payload.predicate, object: payload.object };
+    });
 
   const missingPredicates = requiredPredicates.filter(
-    (predicate) => !facts.some((summary) => summary.includes(predicate)),
+    (predicate) => !facts.some((fact) => fact.summary.includes(predicate)),
   );
 
   if (missingPredicates.length > 0) {
@@ -59,7 +68,7 @@ export async function runSupportTurn(input: {
 
   const answer = [
     "I have enough context to proceed.",
-    ...facts.map((fact) => `Known: ${fact}`),
+    ...facts.map((fact) => `Known: ${fact.summary}`),
     "Routing this to the documented escalation contact now.",
   ].join(" ");
 

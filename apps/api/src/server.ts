@@ -293,6 +293,7 @@ app.get("/chat", async (c) => {
   const { qwenConfigured } = capabilityStatus();
 
   try {
+    await memory.createSession({ accountId: "acme_corp", customerId: "jason_99", sessionId });
     const events = await store.getEvents(sessionId);
     const messages = events.map((e) => ({ role: e.role, message: e.message }));
     const facts = await store.currentFacts("acme_corp", "jason_99", new Date());

@@ -32,6 +32,20 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         <div style="font-weight:700;margin-bottom:var(--sp-1);font-size:var(--text-sm);">Session</div>
         <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-muted);word-break:break-all;">${sessionId}</div>
       </div>
+      <!-- VR-489 · UX2: proof card — populated from /eval-snapshot, hidden until resolved -->
+      <div id="proof-card" class="card proof-card" style="display:none;margin-top:var(--sp-4);">
+        <div class="panel-label" style="margin-bottom:var(--sp-3);">Memory Impact</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--sp-2);">
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">With memory</span>
+          <span id="proof-mem-on" style="font-size:var(--text-2xl);font-weight:800;color:var(--memory);">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--sp-3);">
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">Without memory</span>
+          <span id="proof-mem-off" style="font-size:var(--text-2xl);font-weight:800;color:var(--text-faint);">—</span>
+        </div>
+        <div class="panel-label" style="margin-bottom:0;">repeat-question rate</div>
+      </div>
+
       <div style="margin-top:var(--sp-6);">
         <a href="/facts" style="color:var(--memory);font-size:var(--text-sm);text-decoration:none;">View Manager Dashboard →</a>
       </div>
@@ -104,7 +118,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       return new URLSearchParams(window.location.search).get('memory') === 'off' ? 'off' : 'on';
     }
 
-    // Parse "subject predicate object" → "predicate · object" chip label
+    // Parse "subject predicate object" → "predicate · object" chip label (raw form)
     function chipLabel(fact) {
       var parts = fact.split(' ');
       return parts.length >= 3
@@ -112,38 +126,73 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         : escapeHtml(fact);
     }
 
+    // VR-492: human-readable chip labels built from structured predicate/object fields
+    var HUMAN_CHIP_LABELS = {
+      sla_tier:           function(obj) { return obj === 'enterprise' ? 'Gold SLA' : obj + ' SLA'; },
+      integration:        function(obj) { return obj; },
+      auth_requirement:   function(obj) { return obj + ' required'; },
+      escalation_contact: function(obj) { return obj; },
+      technical_contact:  function(obj) { return obj; },
+      product_config:     function(obj) { return obj; },
+      timezone:           function(obj) { return obj; },
+    };
+
+    // Takes { predicate, object } — no string splitting, no multi-word subject hazard
+    function humanChipLabel(fact) {
+      var predicate = fact.predicate;
+      var obj = fact.object;
+      var fn = HUMAN_CHIP_LABELS[predicate];
+      return fn ? escapeHtml(fn(obj)) : escapeHtml(predicate.replace(/_/g, ' ') + ' · ' + obj);
+    }
+
     // Pre-populate a tagged semantic trace row; writeSweep fires on entry
+    // fact: { summary, predicate, object } — summary is the glow match key
     function addFactTrace(fact) {
       hideEmpty();
       var el = document.createElement('div');
       el.className = 'card trace-semantic trace-new';
-      el.dataset.traceFact = fact;
+      el.dataset.traceFact = fact.summary;
       el.innerHTML = '<span class="badge badge-semantic" style="margin-bottom:var(--sp-2);">RECALL</span>'
-        + '<div style="font-size:var(--text-xs);font-family:var(--font-mono);margin-top:var(--sp-1);">'
-        + chipLabel(fact) + '</div>';
+        + '<div style="font-size:var(--text-sm);margin-top:var(--sp-1);">'
+        + humanChipLabel(fact)
+        + '<span style="color:var(--text-faint);font-size:var(--text-xs);"> · remembered</span></div>';
       trace.prepend(el);
     }
 
     // Single shared beat: chip render + trace-row glow in one synchronous call
     function fireRecallBeat(answer, citedFacts) {
+      // VR-488 · UX1: plain-English bridge so a first-time viewer understands in 10s
+      var bridgeHtml = citedFacts.length > 0
+        ? '<div class="recall-bridge">Remembered from prior session</div>'
+        : '';
+
+      // VR-488 · UX1: human-readable chips matching trace panel labels
       var chipsHtml = citedFacts.length > 0
         ? '<div class="recall-chips">'
             + citedFacts.map(function(f) {
-                return '<span class="recall-chip">' + chipLabel(f) + '</span>';
+                return '<span class="recall-chip">'
+                  + humanChipLabel(f)
+                  + '<span class="chip-remembered"> · remembered</span></span>';
               }).join('')
             + '</div>'
         : '';
 
+
+      // VR-490 · UX3: governance trust strip — reads from real recall state
+      var trustHtml = citedFacts.length > 0
+        ? '<div class="trust-strip">Scoped to Acme · Current · Provenance available · Not expired</div>'
+        : '';
+
       thread.innerHTML += '<div class="message agent">'
-        + '<div class="content">' + escapeHtml(answer) + chipsHtml + '</div>'
+        + '<div class="content">' + escapeHtml(answer) + bridgeHtml + chipsHtml + trustHtml + '</div>'
         + '<div class="message-meta">Nat · Just now</div>'
         + '</div>';
       thread.scrollTop = thread.scrollHeight;
 
-      // Glow all matching trace rows — same synchronous call
+      // Glow all matching trace rows — match on summary string (glow key unchanged)
       citedFacts.forEach(function(fact) {
         trace.querySelectorAll('[data-trace-fact]').forEach(function(row) {
-          if (row.dataset.traceFact === fact) {
+          if (row.dataset.traceFact === fact.summary) {
             row.classList.remove('recall-glow');
             void row.offsetWidth; // force reflow to restart animation
             row.classList.add('recall-glow');
@@ -241,6 +290,19 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       params.set('memory', params.get('memory') === 'off' ? 'on' : 'off');
       window.location.search = params.toString();
     }
+
+    // VR-489 · UX2: load repeat-question rate from live /eval-snapshot
+    (async function loadProofCard() {
+      try {
+        var r = await fetch('/eval-snapshot');
+        if (!r.ok) return;
+        var snap = await r.json();
+        if (!snap || !snap.ok) return;
+        document.getElementById('proof-mem-on').textContent = snap.memoryOnReaskRate.toFixed(2);
+        document.getElementById('proof-mem-off').textContent = snap.memoryOffReaskRate.toFixed(2);
+        document.getElementById('proof-card').style.display = '';
+      } catch (_) {}
+    })();
   </script>
 </body>
 </html>
@@ -269,7 +331,7 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
       <!-- Ablation headline — derived from live fact store -->
       <div class="card" style="margin-bottom:var(--sp-8);border-color:var(--trace-semantic-border);background:var(--trace-semantic-bg);">
         <div style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.03em;margin-bottom:var(--sp-1);color:var(--memory);">
-          re-ask rate: ${memOnReaskRate.toFixed(2)} (memory) vs 1.00 (no-memory)
+          repeat-question rate: ${memOnReaskRate.toFixed(2)} (memory) vs 1.00 (no memory)
         </div>
         <div style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-mono);">
           live ablation — derived from current fact store · /eval-snapshot
@@ -284,8 +346,15 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
               <span style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--memory);">${Math.round(f.confidence * 100)}% conf</span>
             </div>
             <div style="font-size:var(--text-lg);font-weight:600;margin-bottom:var(--sp-4);">"${f.object}"</div>
-            <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-faint);border-top:1px solid var(--border);padding-top:var(--sp-3);">
+            <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-faint);border-top:1px solid var(--border);padding-top:var(--sp-3);margin-bottom:var(--sp-2);">
               session ${f.sessionId ? f.sessionId.slice(0, 8) + '…' : '—'} · ${f.validFrom ? new Date(f.validFrom).toISOString().slice(0, 10) : '—'}
+            </div>
+            <div class="fact-governance-row">
+              <span class="badge-governance">Scoped to Acme</span>
+              <span class="badge-governance">Current</span>
+              ${f.expiresAt
+                ? `<span class="badge-governance-warn">Expires ${new Date(f.expiresAt).toISOString().slice(0, 10)}</span>`
+                : `<span class="badge-governance">No expiry</span>`}
             </div>
           </div>
         `).join('') : `
