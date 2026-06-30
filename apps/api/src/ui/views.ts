@@ -180,7 +180,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 
       // VR-490 · UX3: governance trust strip — reads from real recall state
       var trustHtml = citedFacts.length > 0
-        ? '<div class="trust-strip">Scoped to Acme · Current · Provenance available · Not expired</div>'
+        ? '<div class="trust-strip">Scoped to Acme · Current · Session provenance · Not expired</div>'
         : '';
 
       thread.innerHTML += '<div class="message agent">'

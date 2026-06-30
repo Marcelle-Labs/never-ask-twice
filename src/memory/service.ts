@@ -196,9 +196,19 @@ export class MemoryService {
         });
       }
 
-      // Note: Provenance attribution requires event-level mapping from distillation output
-      // Current distillation doesn't provide which events produced which candidate
-      // Skipping provenance to avoid incorrect Cartesian product attribution
+      // Session-level provenance: link each new fact to all events in this session.
+      // Per-event attribution would require distillation to return source event IDs (deferred).
+      const provenanceWeight = events.length > 0 ? 1 / events.length : 1;
+      await Promise.all(
+        events.map((event) =>
+          this.store.addProvenance({
+            factId: newFact.factId,
+            eventId: event.eventId,
+            weight: provenanceWeight,
+            rationale: "session-level attribution",
+          })
+        )
+      );
 
       insertedFacts.push(newFact);
     }

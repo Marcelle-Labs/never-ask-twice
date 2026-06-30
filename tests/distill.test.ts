@@ -40,8 +40,9 @@ describe("distill", () => {
     });
 
     expect(store.semanticFacts).toHaveLength(1);
-    // Note: Provenance attribution requires event-level mapping from distillation output
-    // Current distillation doesn't provide which events produced which candidate
-    // expect(store.semanticFactProvenance).toHaveLength(1);
+    // 1 event × 1 fact = 1 session-level provenance row
+    expect(store.semanticFactProvenance).toHaveLength(1);
+    expect(store.semanticFactProvenance[0].weight).toBe(1);
+    expect(store.semanticFactProvenance[0].rationale).toBe("session-level attribution");
   });
 });
