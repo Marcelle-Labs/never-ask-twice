@@ -1,8 +1,8 @@
 # Alibaba Cloud Function Compute Deployment
 
-Never Ask Twice is designed to deploy to Alibaba Cloud Function Compute (FC) via the root `s.yaml`.
+Never Ask Twice is designed to deploy to Alibaba Cloud Function Compute (FC) via the root `s.yaml`. **FC is the preferred target but is not the current judge-facing URL** — it's blocked on Alibaba ID verification (KYC), not on app readiness. The live, judge-clickable URL today is Railway: see [`deploy/railway.md`](railway.md) and the README Status table. Swapping from Railway to FC once KYC clears is a `DATABASE_URL` config change and a redeploy, not a code change.
 
-> Status: deployment instructions are present. Final deployment proof requires a live FC URL plus successful `/health` and Qwen-backed API evidence after credentials are available.
+> Status: deployment instructions are present and verified deployable in shape. Final FC deployment proof (live FC URL plus successful `/health` and Qwen-backed API evidence) is still pending Alibaba account verification.
 
 ## Pre-requisites
 

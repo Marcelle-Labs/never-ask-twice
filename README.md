@@ -9,10 +9,12 @@ Enterprise Support MemoryAgent on Qwen Cloud
 ![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Runtime](https://img.shields.io/badge/Runtime-Node.js%2020-green)
-![Cloud](https://img.shields.io/badge/Cloud-Alibaba%20Function%20Compute-orange)
+![Cloud](https://img.shields.io/badge/Cloud-Railway%20(live)%20%7C%20Alibaba%20FC%20pending-orange)
 ![Model](https://img.shields.io/badge/Model-Qwen%20Cloud-purple)
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
+
+**Live demo:** [never-ask-twice-production.up.railway.app](https://never-ask-twice-production.up.railway.app) — try `/chat`, or hit `/health` directly.
 
 Customers don't want a smarter chatbot if they still have to repeat their SLA, setup, open issue, and escalation contact every time they come back.
 
@@ -35,29 +37,31 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |Deterministic eval harness|Done|`pnpm eval` prints memory ON/OFF re-ask, recall, and hallucination metrics.|
 |Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
-|Qwen-backed live path|In progress|Requires `DASHSCOPE_API_KEY`; local-safe mode runs without it.|
-|Alibaba Function Compute deployment|In progress|`s.yaml` and deployment instructions exist; final live proof is still required.|
+|Qwen-backed live path|Done|Live on Railway with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
+|Railway deployment (primary live URL)|Done|[never-ask-twice-production.up.railway.app](https://never-ask-twice-production.up.railway.app) — Neon-backed, turn → close → recall cycle verified end-to-end. See [`deploy/railway.md`](deploy/railway.md).|
+|Alibaba Function Compute deployment|Blocked on Alibaba ID verification (KYC)|`s.yaml` and deployment instructions exist and are deployable in shape; not the app. Swap from Railway is a `DATABASE_URL` change. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
 |Demo video|Pending|Should use the frozen Acme scenario and the eval output line.|
 
 ## Judge path
 
-1. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
-2. Run the ablation:
+1. Try the live deployment: [never-ask-twice-production.up.railway.app](https://never-ask-twice-production.up.railway.app) — `/chat` for the UI, `/health` for capability status.
+2. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
+3. Run the ablation:
 
    ```bash
    pnpm eval
    ```
 
-3. Inspect the forgetting behavior: [`docs/forgetting-policy.md`](docs/forgetting-policy.md).
-4. Read the system architecture: [`docs/architecture.md`](docs/architecture.md).
-5. List MCP tools:
+4. Inspect the forgetting behavior: [`docs/forgetting-policy.md`](docs/forgetting-policy.md).
+5. Read the system architecture: [`docs/architecture.md`](docs/architecture.md).
+6. List MCP tools:
 
    ```bash
    pnpm build
    pnpm mcp:list-tools
    ```
 
-6. Review the deployment instructions and proof placeholder: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).
+7. Review deployment proof: [`deploy/railway.md`](deploy/railway.md) (live, primary) and [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (preferred target, pending Alibaba KYC).
 
 ## The measurable result
 
@@ -100,7 +104,8 @@ This is not transcript logging. It is structured memory with retrieval disciplin
 Customer chat / MCP
         |
         v
-Hono API on Alibaba Function Compute
+Hono API (same code, two deploy targets:
+           Railway - primary, live | Alibaba FC - swap-to-when-cleared)
         |
         v
 MemoryService
@@ -110,11 +115,11 @@ MemoryService
   |-- forgetting: TTL + supersession + scoped recall
         |
         +--> Qwen Cloud via DashScope-compatible OpenAI API
-        +--> Postgres + pgvector
+        +--> Neon Postgres + pgvector
         +--> MCP stdio tools
 ```
 
-More detail: [`docs/architecture.md`](docs/architecture.md).
+Full diagram and component map: [`docs/architecture.md`](docs/architecture.md).
 
 ## Getting started
 
@@ -196,7 +201,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 
 ## Project structure
 
-- `apps/api` — Hono API, local server, and Function Compute handler.
+- `apps/api` — Hono API, local server, and Function Compute handler. Deploy-target-agnostic; live on Railway today.
 - `src/agent` — deterministic support-agent policy used by the eval harness.
 - `src/contracts.ts` — memory predicate enum, Zod contracts, and shared types.
 - `src/db` — Drizzle schema and SQL migration string.
@@ -207,7 +212,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 - `eval` — frozen three-session scenario, ground truth, expected output, and runner.
 - `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
 - `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
-- `deploy` — Alibaba Function Compute deployment instructions and proof placeholder.
+- `deploy` — Railway deployment proof (live, primary) and Alibaba Function Compute deployment instructions (preferred target, pending KYC).
 
 ## Key commands
 
