@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
@@ -86,6 +87,21 @@ app.get("/favicon.svg", (c) => c.text(brandFaviconSvg, 200, {
   "Cache-Control": "public, max-age=31536000, immutable",
   "Content-Type": "image/svg+xml; charset=utf-8",
 }));
+
+// ---------------------------------------------------------------------------
+// GET /
+// Landing page from the bundled design artifact
+// ---------------------------------------------------------------------------
+app.get("/", async (c) => {
+  const landingPath = new URL("./ui/landing.html", import.meta.url).pathname;
+  try {
+    const html = readFileSync(landingPath, "utf8");
+    return c.html(html);
+  } catch (err) {
+    console.error("[ui] Failed to read landing page:", err);
+    return c.text("Landing page not found", 500);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // POST /turn
@@ -286,6 +302,33 @@ app.get("/static/fonts/:file", (c) => {
     const font = readFileSync(fontPath);
     return c.body(font as unknown as ReadableStream, 200, {
       "Content-Type": "font/woff2",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    });
+  } catch {
+    return c.notFound();
+  }
+});
+
+// Brand assets from docs/assets/brand
+const BRAND_DIR = new URL("../../../docs/assets/brand", import.meta.url).pathname;
+const BRAND_MIME: Record<string, string> = {
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+
+app.get("/static/brand/:file", (c) => {
+  const file = c.req.param("file");
+  const assetPath = path.join(BRAND_DIR, file);
+  if (!assetPath.startsWith(BRAND_DIR + path.sep)) return c.notFound();
+  const ext = path.extname(file).toLowerCase();
+  const mime = BRAND_MIME[ext];
+  if (!mime) return c.notFound();
+  try {
+    const asset = readFileSync(assetPath);
+    return c.body(asset as unknown as ReadableStream, 200, {
+      "Content-Type": mime,
       "Cache-Control": "public, max-age=31536000, immutable",
     });
   } catch {
