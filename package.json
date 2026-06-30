@@ -49,6 +49,7 @@
     "migrate": "pnpm build && node --env-file=.env dist/scripts/migrate.js",
     "prepare": "node scripts/install-hooks.mjs",
     "pretest": "pnpm build",
+    "start": "node dist/apps/api/src/server.js",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
