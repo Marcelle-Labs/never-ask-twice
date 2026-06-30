@@ -17,7 +17,7 @@ type Db = NodePgDatabase<typeof schema>;
 
 export class DrizzleMemoryStore implements MemoryStore {
   // In-memory working-facts store (working facts are ephemeral to the session)
-  private workingFactsCache: WorkingMemoryRecord[] = [];
+  private readonly workingFactsCache: WorkingMemoryRecord[] = [];
 
   constructor(private readonly db: Db) {}
 

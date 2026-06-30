@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
@@ -93,7 +94,7 @@ app.get("/favicon.svg", (c) => c.text(brandFaviconSvg, 200, {
 // Landing page from the bundled design artifact
 // ---------------------------------------------------------------------------
 app.get("/", async (c) => {
-  const landingPath = new URL("./ui/landing.html", import.meta.url).pathname;
+  const landingPath = fileURLToPath(new URL("./ui/landing.html", import.meta.url));
   try {
     const html = readFileSync(landingPath, "utf8");
     return c.html(html);
@@ -134,6 +135,9 @@ app.post("/turn", async (c) => {
   const { accountId, customerId, role, message } = parsed.data;
   const sessionId = parsed.data.sessionId ?? randomUUID();
   const ts = parsed.data.ts ? new Date(parsed.data.ts) : new Date();
+  if (Number.isNaN(ts.getTime())) {
+    return c.json({ error: "Invalid ts date" }, 400);
+  }
   const memoryMode = parsed.data.memoryMode ?? "on";
 
   try {
@@ -167,8 +171,8 @@ app.post("/turn", async (c) => {
     if (err instanceof SessionNotFoundError) {
       return c.json({ error: err.message }, 404);
     }
-    const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ error: msg }, 500);
+    console.error("[turn] Failed to process turn:", err);
+    return c.json({ error: "Failed to process turn" }, 500);
   }
 });
 
@@ -200,6 +204,9 @@ app.post("/sessions/:id/close", async (c) => {
 
   const { accountId, customerId } = parsed.data;
   const closedAt = parsed.data.closedAt ? new Date(parsed.data.closedAt) : new Date();
+  if (Number.isNaN(closedAt.getTime())) {
+    return c.json({ error: "Invalid closedAt date" }, 400);
+  }
 
   try {
     const result = await memory.closeSession({ sessionId, accountId, customerId, closedAt });
@@ -216,8 +223,8 @@ app.post("/sessions/:id/close", async (c) => {
     if (err instanceof SessionNotFoundError) {
       return c.json({ error: err.message }, 404);
     }
-    const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ error: msg }, 500);
+    console.error("[close] Failed to close session:", err);
+    return c.json({ error: "Failed to close session" }, 500);
   }
 });
 
@@ -247,7 +254,8 @@ app.post("/recall", async (c) => {
   }
 
   const { accountId, customerId, sessionId, query } = parsed.data;
-  const tokenBudget = parsed.data.tokenBudget ?? Number(process.env.MEMORY_TOKEN_BUDGET ?? 1200);
+  const envBudget = Number(process.env.MEMORY_TOKEN_BUDGET ?? 1200);
+  const tokenBudget = parsed.data.tokenBudget ?? (Number.isNaN(envBudget) || envBudget <= 0 ? 1200 : envBudget);
   const now = new Date();
 
   try {
@@ -266,8 +274,8 @@ app.post("/recall", async (c) => {
       200
     );
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ error: msg }, 500);
+    console.error("[recall] Failed to recall:", err);
+    return c.json({ error: "Failed to recall" }, 500);
   }
 });
 
@@ -277,7 +285,7 @@ app.post("/recall", async (c) => {
 
 // Static CSS
 app.get("/static/index.css", (c) => {
-  const cssPath = new URL("./ui/index.css", import.meta.url).pathname;
+  const cssPath = fileURLToPath(new URL("./ui/index.css", import.meta.url));
   try {
     const css = readFileSync(cssPath, "utf8");
     return c.text(css, 200, { "Content-Type": "text/css" });
@@ -297,10 +305,10 @@ app.get("/static/fonts/:file", (c) => {
   const file = c.req.param("file");
   const rel = ALLOWED_FONTS[file];
   if (!rel) return c.notFound();
-  const fontPath = new URL(rel, import.meta.url).pathname;
+  const fontPath = fileURLToPath(new URL(rel, import.meta.url));
   try {
     const font = readFileSync(fontPath);
-    return c.body(font as unknown as ReadableStream, 200, {
+    return c.body(font, 200, {
       "Content-Type": "font/woff2",
       "Cache-Control": "public, max-age=31536000, immutable",
     });
@@ -310,7 +318,7 @@ app.get("/static/fonts/:file", (c) => {
 });
 
 // Brand assets from docs/assets/brand
-const BRAND_DIR = new URL("../../../docs/assets/brand", import.meta.url).pathname;
+const BRAND_DIR = fileURLToPath(new URL("../../../docs/assets/brand", import.meta.url));
 const BRAND_MIME: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
@@ -320,14 +328,15 @@ const BRAND_MIME: Record<string, string> = {
 
 app.get("/static/brand/:file", (c) => {
   const file = c.req.param("file");
-  const assetPath = path.join(BRAND_DIR, file);
-  if (!assetPath.startsWith(BRAND_DIR + path.sep)) return c.notFound();
+  const assetPath = path.resolve(BRAND_DIR, file);
+  const relative = path.relative(BRAND_DIR, assetPath);
+  if (relative === "" || relative.startsWith(".." + path.sep) || relative.startsWith("..")) return c.notFound();
   const ext = path.extname(file).toLowerCase();
   const mime = BRAND_MIME[ext];
   if (!mime) return c.notFound();
   try {
     const asset = readFileSync(assetPath);
-    return c.body(asset as unknown as ReadableStream, 200, {
+    return c.body(asset, 200, {
       "Content-Type": mime,
       "Cache-Control": "public, max-age=31536000, immutable",
     });
@@ -337,7 +346,8 @@ app.get("/static/brand/:file", (c) => {
 });
 
 app.get("/chat", async (c) => {
-  const sessionId = c.req.query("sessionId") ?? randomUUID();
+  const querySessionId = c.req.query("sessionId");
+  const sessionId = querySessionId && querySessionId.trim().length > 0 ? querySessionId.trim() : randomUUID();
   const memoryOn = c.req.query("memory") !== "off";
   const { qwenConfigured } = capabilityStatus();
 
@@ -350,8 +360,8 @@ app.get("/chat", async (c) => {
     const slaTier = slaFact ? slaFact.object : null;
     return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured));
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ error: msg }, 500);
+    console.error("[chat] Failed to render chat:", err);
+    return c.json({ error: "Failed to render chat" }, 500);
   }
 });
 
@@ -446,13 +456,29 @@ export async function handler(event: FcEvent, context: unknown) {
     responseHeaders[key] = value;
   });
 
-  const responseBody = await response.text();
+  const contentType = response.headers.get("content-type") ?? "";
+  const isTextLike =
+    contentType.startsWith("text/") ||
+    contentType.startsWith("application/json") ||
+    contentType.startsWith("application/javascript") ||
+    contentType.startsWith("application/xml") ||
+    contentType.startsWith("image/svg+xml");
+
+  let responseBody: string;
+  let isBase64Encoded = false;
+  if (isTextLike) {
+    responseBody = await response.text();
+  } else {
+    const buffer = Buffer.from(await response.arrayBuffer());
+    responseBody = buffer.toString("base64");
+    isBase64Encoded = true;
+  }
 
   return {
     statusCode: response.status,
     headers: responseHeaders,
     body: responseBody,
-    isBase64Encoded: false,
+    isBase64Encoded,
   };
 }
 

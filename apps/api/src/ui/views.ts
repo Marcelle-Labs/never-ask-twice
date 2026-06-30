@@ -1,6 +1,26 @@
 import type { SemanticFactRecord } from "../../../../src/memory/types.js";
 import { BrandLockup } from "./brand.js";
 
+function htmlEscape(input: string | number | null | undefined): string {
+  if (input == null) return "";
+  return String(input)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function jsStringEscape(input: string): string {
+  return input
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+}
+
 export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean, slaTier: string | null, qwenConfigured: boolean) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -26,11 +46,11 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       <h3 class="panel-label">Scenario Context</h3>
       <div class="card">
         <div style="font-weight:700;margin-bottom:var(--sp-1);font-size:var(--text-base);">Customer: Jason</div>
-        <div style="font-size:var(--text-sm);color:var(--text-muted);">SLA: ${slaTier ?? '—'}</div>
+        <div style="font-size:var(--text-sm);color:var(--text-muted);">SLA: ${htmlEscape(slaTier) || '—'}</div>
       </div>
       <div class="card">
         <div style="font-weight:700;margin-bottom:var(--sp-1);font-size:var(--text-sm);">Session</div>
-        <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-muted);word-break:break-all;">${sessionId}</div>
+        <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-muted);word-break:break-all;">${htmlEscape(sessionId)}</div>
       </div>
       <!-- VR-489 · UX2: proof card — populated from /eval-snapshot, hidden until resolved -->
       <div id="proof-card" class="card proof-card" style="display:none;margin-top:var(--sp-4);">
@@ -54,8 +74,8 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     <main>
       <div class="message-list" id="chat-thread">
         ${messages.map(m => `
-          <div class="message ${m.role}">
-            <div class="content">${m.message}</div>
+          <div class="message ${htmlEscape(m.role)}">
+            <div class="content">${htmlEscape(m.message)}</div>
             <div class="message-meta">${m.role === 'customer' ? 'Jason' : 'Nat'} · Just now</div>
           </div>
         `).join('')}
@@ -80,7 +100,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
   </div>
 
   <script>
-    const sessionId = "${sessionId}";
+    const sessionId = "${jsStringEscape(sessionId)}";
     const form = document.getElementById('chat-form');
     const input = document.getElementById('user-input');
     const thread = document.getElementById('chat-thread');
@@ -364,12 +384,12 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
         ${facts.length ? facts.map(f => `
           <div class="card trace-semantic">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-3);">
-              <span class="badge badge-semantic">${f.predicate}</span>
+              <span class="badge badge-semantic">${htmlEscape(f.predicate)}</span>
               <span style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--memory);">${Math.round(f.confidence * 100)}% conf</span>
             </div>
-            <div style="font-size:var(--text-lg);font-weight:600;margin-bottom:var(--sp-4);">"${f.object}"</div>
+            <div style="font-size:var(--text-lg);font-weight:600;margin-bottom:var(--sp-4);">"${htmlEscape(f.object)}"</div>
             <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-faint);border-top:1px solid var(--border);padding-top:var(--sp-3);margin-bottom:var(--sp-2);">
-              session ${f.sessionId ? f.sessionId.slice(0, 8) + '…' : '—'} · ${f.validFrom ? new Date(f.validFrom).toISOString().slice(0, 10) : '—'}
+              session ${f.sessionId ? htmlEscape(f.sessionId.slice(0, 8)) + '…' : '—'} · ${f.validFrom ? new Date(f.validFrom).toISOString().slice(0, 10) : '—'}
             </div>
             <div class="fact-governance-row">
               <span class="badge-governance">Scoped to Acme</span>
