@@ -148,9 +148,20 @@ export class MemoryService {
 
     const existingFacts = await this.store.currentFacts(input.accountId, input.customerId, input.closedAt);
 
-    // Dedup candidates by (subject, predicate) to avoid violating unique index
-    const dedupedCandidates = new Map<string, typeof candidates[number]>();
-    for (const candidate of candidates.map((item) => DistilledFactCandidateSchema.parse(item))) {
+    // Dedup candidates by (subject, predicate) to avoid violating unique index.
+    // A real Qwen distillation can return predicates outside the enum (e.g. "customer_name");
+    // drop those candidates instead of letting one bad one crash the whole close.
+    const dedupedCandidates = new Map<string, DistilledFactCandidate>();
+    for (const item of candidates) {
+      const parsed = DistilledFactCandidateSchema.safeParse(item);
+      if (!parsed.success) {
+        console.warn(
+          "[distill] dropping invalid candidate:",
+          parsed.error.issues.map((issue) => issue.message).join("; ")
+        );
+        continue;
+      }
+      const candidate = parsed.data;
       const key = `${candidate.subject}|${candidate.predicate}`;
       dedupedCandidates.set(key, candidate); // last-wins
     }
