@@ -2,6 +2,8 @@
 
 ![Never Ask Twice](docs/assets/brand/README-hero.png)
 
+**Support that remembers.**
+
 Enterprise Support MemoryAgent on Qwen Cloud
 
 ![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
@@ -11,6 +13,8 @@ Enterprise Support MemoryAgent on Qwen Cloud
 ![Model](https://img.shields.io/badge/Model-Qwen%20Cloud-purple)
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
+
+Customers don't want a smarter chatbot if they still have to repeat their SLA, setup, open issue, and escalation contact every time they come back.
 
 Never Ask Twice is a production-shaped B2B support memory agent that remembers customer context across sessions, retrieves only the memories that matter, forgets stale facts safely, and proves improvement with a deterministic memory ON/OFF evaluation harness plus a live Qwen-backed API path.
 
@@ -24,31 +28,35 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 
 ## Status
 
-| Area | Status | Notes |
+|Area|Status|Notes|
 |---|---|---|
-| Public clean-room repo | Done | Synthetic data only; boundary scan included. |
-| Local Postgres + pgvector setup | Done | `docker compose up -d` binds Postgres on `localhost:5433`. |
-| Deterministic eval harness | Done | `pnpm eval` prints memory ON/OFF re-ask, recall, and hallucination metrics. |
-| Memory service | Done | Working, episodic, semantic, forgetting, and budgeted recall paths are implemented. |
-| MCP stdio surface | Done | Four memory tools are exposed through `pnpm mcp:list-tools`. |
-| Qwen-backed live path | In progress | Requires `DASHSCOPE_API_KEY`; local-safe mode runs without it. |
-| Alibaba Function Compute deployment | In progress | `s.yaml` and deployment instructions exist; final live proof is still required. |
-| Demo video | Pending | Should use the frozen Acme scenario and the eval output line. |
+|Public clean-room repo|Done|Synthetic data only; boundary scan included.|
+|Local Postgres + pgvector setup|Done|`docker compose up -d` binds Postgres on `localhost:5433`.|
+|Deterministic eval harness|Done|`pnpm eval` prints memory ON/OFF re-ask, recall, and hallucination metrics.|
+|Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
+|MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
+|Qwen-backed live path|In progress|Requires `DASHSCOPE_API_KEY`; local-safe mode runs without it.|
+|Alibaba Function Compute deployment|In progress|`s.yaml` and deployment instructions exist; final live proof is still required.|
+|Demo video|Pending|Should use the frozen Acme scenario and the eval output line.|
 
 ## Judge path
 
 1. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
 2. Run the ablation:
+
    ```bash
    pnpm eval
    ```
+
 3. Inspect the forgetting behavior: [`docs/forgetting-policy.md`](docs/forgetting-policy.md).
 4. Read the system architecture: [`docs/architecture.md`](docs/architecture.md).
 5. List MCP tools:
+
    ```bash
    pnpm build
    pnpm mcp:list-tools
    ```
+
 6. Review the deployment instructions and proof placeholder: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).
 
 ## The measurable result
@@ -203,17 +211,17 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 
 ## Key commands
 
-| Command | Purpose |
+|Command|Purpose|
 |---|---|
-| `pnpm install` | Install dependencies |
-| `pnpm build` | Build the project |
-| `pnpm lint` | Run TypeScript type check |
-| `pnpm test` | Run the test suite |
-| `pnpm eval` | Run the deterministic memory ON/OFF eval harness |
-| `pnpm migrate` | Run database migrations |
-| `pnpm boundary-scan` | Run the clean-room boundary scan |
-| `pnpm mcp:list-tools` | List the MCP tools |
-| `pnpm demo:script-check` | Verify demo fixtures are aligned |
+|`pnpm install`|Install dependencies|
+|`pnpm build`|Build the project|
+|`pnpm lint`|Run TypeScript type check|
+|`pnpm test`|Run the test suite|
+|`pnpm eval`|Run the deterministic memory ON/OFF eval harness|
+|`pnpm migrate`|Run database migrations|
+|`pnpm boundary-scan`|Run the clean-room boundary scan|
+|`pnpm mcp:list-tools`|List the MCP tools|
+|`pnpm demo:script-check`|Verify demo fixtures are aligned|
 
 ## Security and clean-room boundary
 

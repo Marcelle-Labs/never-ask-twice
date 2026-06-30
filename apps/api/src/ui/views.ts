@@ -88,6 +88,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     const emptyState = document.getElementById('trace-empty-state');
     const closeBtn = document.getElementById('close-session-btn');
     const qwenConfigured = ${qwenConfigured};
+    const sendBtn = form.querySelector('button[type="submit"]');
 
     function escapeHtml(str) {
       return String(str)
@@ -160,7 +161,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     }
 
     // Single shared beat: chip render + trace-row glow in one synchronous call
-    function fireRecallBeat(answer, citedFacts) {
+    function fireRecallBeat(answer, citedFacts, turnId) {
       // VR-488 · UX1: plain-English bridge so a first-time viewer understands in 10s
       var bridgeHtml = citedFacts.length > 0
         ? '<div class="recall-bridge">Remembered from prior session</div>'
@@ -183,10 +184,17 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         ? '<div class="trust-strip">Scoped to Acme · Current · Session provenance · Not expired</div>'
         : '';
 
-      thread.innerHTML += '<div class="message agent">'
-        + '<div class="content">' + escapeHtml(answer) + bridgeHtml + chipsHtml + trustHtml + '</div>'
-        + '<div class="message-meta">Nat · Just now</div>'
-        + '</div>';
+      var agentEl = document.createElement('div');
+      agentEl.className = 'message agent';
+      agentEl.innerHTML = '<div class="content">' + escapeHtml(answer) + bridgeHtml + chipsHtml + trustHtml + '</div>'
+        + '<div class="message-meta">Nat · Just now</div>';
+
+      var customerEl = turnId ? thread.querySelector('[data-turn-id="' + turnId + '"]') : null;
+      if (customerEl && customerEl.nextSibling) {
+        thread.insertBefore(agentEl, customerEl.nextSibling);
+      } else {
+        thread.appendChild(agentEl);
+      }
       thread.scrollTop = thread.scrollHeight;
 
       // Glow all matching trace rows — match on summary string (glow key unchanged)
@@ -201,16 +209,25 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       });
     }
 
+    let isSending = false;
+
     form.onsubmit = async (e) => {
       e.preventDefault();
-      const msg = input.value;
-      input.value = '';
+      if (isSending) return;
+      const msg = input.value.trim();
+      if (!msg) return;
+      isSending = true;
+      if (sendBtn) sendBtn.disabled = true;
 
-      thread.innerHTML += '<div class="message customer">'
-        + '<div class="content">' + escapeHtml(msg) + '</div>'
-        + '<div class="message-meta">Jason · Just now</div>'
-        + '</div>';
+      const turnId = 'turn-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      var customerEl = document.createElement('div');
+      customerEl.className = 'message customer';
+      customerEl.dataset.turnId = turnId;
+      customerEl.innerHTML = '<div class="content">' + escapeHtml(msg) + '</div>'
+        + '<div class="message-meta">Jason · Just now</div>';
+      thread.appendChild(customerEl);
       thread.scrollTop = thread.scrollHeight;
+      input.value = '';
 
       try {
         const res = await fetch('/turn', {
@@ -244,11 +261,15 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 
         // 600ms beat: fireRecallBeat drives chips + glow from one call
         setTimeout(function() {
-          fireRecallBeat(data.answer || 'Unable to process turn.', data.citedFacts || []);
+          fireRecallBeat(data.answer || 'Unable to process turn.', data.citedFacts || [], turnId);
         }, 600);
 
       } catch (err) {
         addTrace('Temporary issue — please retry', 'error');
+      } finally {
+        isSending = false;
+        if (sendBtn) sendBtn.disabled = false;
+        input.focus();
       }
     };
 

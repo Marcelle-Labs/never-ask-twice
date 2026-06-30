@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../../../src/db/schema.js";
@@ -109,7 +109,8 @@ export class DrizzleMemoryStore implements MemoryStore {
     const rows = await this.db
       .select()
       .from(schema.episodicEvents)
-      .where(eq(schema.episodicEvents.sessionId, sessionId));
+      .where(eq(schema.episodicEvents.sessionId, sessionId))
+      .orderBy(asc(schema.episodicEvents.ts));
     return rows.map((r) => ({
       eventId: r.eventId,
       accountId: r.accountId,
@@ -129,7 +130,8 @@ export class DrizzleMemoryStore implements MemoryStore {
       .from(schema.episodicEvents)
       .where(
         and(eq(schema.episodicEvents.accountId, accountId), eq(schema.episodicEvents.customerId, customerId))
-      );
+      )
+      .orderBy(asc(schema.episodicEvents.ts));
     return rows.map((r) => ({
       eventId: r.eventId,
       accountId: r.accountId,
