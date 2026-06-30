@@ -4,6 +4,17 @@ Never Ask Twice is designed to deploy to Alibaba Cloud Function Compute (FC) via
 
 > Status: deployment instructions are present and verified deployable in shape. Final FC deployment proof (live FC URL plus successful `/health` and Qwen-backed API evidence) is still pending Alibaba account verification.
 
+## Proof of Alibaba Cloud deployment (Devpost submission requirement)
+
+Per the [official hackathon rules](https://qwencloud-hackathon.devpost.com/rules), proof of Alibaba Cloud deployment is satisfied by a code-file link demonstrating real use of Alibaba Cloud services and APIs — it does not require the backend to be live on Alibaba Cloud at judging time. The working-demo link required separately in Testing has no platform restriction, and that link is Railway today.
+
+For the Devpost submission's proof-of-deployment field, link both of these together:
+
+- [`apps/api/src/server.ts#L415-L483`](https://github.com/Marcelle-Labs/never-ask-twice/blob/main/apps/api/src/server.ts#L415-L483) — the `handler()` export: adapts Alibaba FC's event/context request shape to the same Hono app (`app.fetch`) that serves every other deploy target, and converts the response back to FC's expected `{statusCode, headers, body, isBase64Encoded}` shape.
+- [`s.yaml`](https://github.com/Marcelle-Labs/never-ask-twice/blob/main/s.yaml) — the Alibaba FC deployment manifest pointing at that exact handler (`dist/apps/api/src/server.handler`).
+
+This project is deploy-target-agnostic by design (see [`docs/architecture.md`](../docs/architecture.md)) and runs against Alibaba FC via this exact handler. Railway is used as the live demo endpoint during the Alibaba ID verification delay; nothing about the application changes when that clears — see "Updating the deployment" below.
+
 ## Pre-requisites
 
 1. An Alibaba Cloud account with the hackathon coupon applied.
