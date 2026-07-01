@@ -372,7 +372,9 @@ app.get("/chat", async (c) => {
     const facts = await store.currentFacts("acme_corp", "jason_99", new Date());
     const slaFact = facts.find((f) => f.predicate === "sla_tier");
     const slaTier = slaFact ? slaFact.object : null;
-    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured));
+    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured), 200, {
+      "Cache-Control": "no-store",
+    });
   } catch (err) {
     console.error("[chat] Failed to render chat:", err);
     return c.json({ error: "Failed to render chat" }, 500);
@@ -408,7 +410,7 @@ app.get("/facts", async (c) => {
   const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
   const memOnReaskRate = missing.length > 0 ? 1.0 : 0.0;
-  return c.html(FactsView(facts, memOnReaskRate));
+  return c.html(FactsView(facts, memOnReaskRate), 200, { "Cache-Control": "no-store" });
 });
 
 // ---------------------------------------------------------------------------
