@@ -64,6 +64,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
           <span id="proof-mem-off" style="font-size:var(--text-2xl);font-weight:800;color:var(--text-faint);">—</span>
         </div>
         <div class="panel-label" style="margin-bottom:0;">repeat-question rate</div>
+        <div style="font-size:var(--text-xs);color:var(--text-faint);font-family:var(--font-mono);margin-top:var(--sp-2);">derived from current fact store · /eval-snapshot — not a live tally of this session</div>
       </div>
 
       <div style="margin-top:var(--sp-6);">
