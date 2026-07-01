@@ -55,13 +55,28 @@ curl -fsS "$RAILWAY_URL/health"
 
 ```text
 Railway URL: https://never-ask-twice-production.up.railway.app
-Verified at: 2026-06-30, shortly after deployment 231c571d (build SUCCESS at 22:35:39 UTC)
+Verified at: 2026-07-01, deployment fa6acbf9 (build SUCCESS)
+
 /health: {"ok":true,"qwenConfigured":true,"databaseConfigured":true,"mode":"qwen-live"}
-Turn -> Neon write -> agent response (smoke test, account "deploy_check"):
-  POST /turn -> 201, sessionId returned, eventId returned,
-  answer: "To get started, I'll need a few details — what SLA tier you're on, ..."
+
 Landing page (/) and chat CSS (/static/index.css) confirmed serving real assets,
 not the no-CSS fallback, after the asset-copy build fix.
+
+Canonical demo scenario (accountId=acme_corp, customerId=jason_99) seeded for real
+against the live Neon DB by replaying the frozen scenario-1 message through the
+live API (POST /turn -> POST /sessions/:id/close), not a script that bypasses it:
+
+  4 semantic facts written, all durable (no expires_at):
+    sla_tier            = gold
+    product_config      = SSO
+    integration         = Salesforce
+    escalation_contact  = Priya
+
+GET /eval-snapshot on the live URL:
+  {"ok":true,"memoryOnReaskRate":0,"memoryOffReaskRate":1,"factsCount":4,"missingPredicates":[]}
+
+This is the ablation contrast the demo video needs (0.00 vs 1.00), verified live,
+not just in the deterministic eval fixture.
 ```
 
 ## Known gaps vs. the FC path
@@ -74,3 +89,6 @@ not the no-CSS fallback, after the asset-copy build fix.
 - If the build fails on `prepare` with `fatal: not in a git directory`, the checkout has no `.git` — `scripts/install-hooks.mjs` now no-ops in that case; if this recurs, check the script wasn't reverted.
 - If the build succeeds but the deploy crash-loops with `node: ../../.env: not found`, the Start Command reverted to `pnpm dev` — it must be `pnpm start`.
 - If `/` or `/static/index.css` 500s or serves the bare fallback, the asset-copy step (`scripts/copy-api-assets.mjs`, wired into `apps/api`'s `build` script) didn't run — confirm `dist/apps/api/src/ui/landing.html` exists after `pnpm build`.
+- If pushes stop deploying (`railway deployment list --json` shows `SKIPPED` / `"No changes to watched files"` even for real changes), the service's Watch Paths field has been reset — clear it in the dashboard (Settings → Build & Deploy → Watch Paths). `railway config apply` cannot reliably unset this field via the CLI; it reports success without the change actually persisting. Always re-run `railway config plan` after `apply` to confirm before trusting it.
+- If `POST /sessions/:id/close` 500s with a Zod `invalid_enum_value` on `predicate`, real Qwen distillation returned a predicate outside `MemoryPredicateSchema` (e.g. `customer_name`). Fixed by dropping invalid candidates individually (`safeParse`, not `parse`) at both `QwenClient.distill()` and `MemoryService.closeSession` — if this recurs, one of those two call sites reverted to `.parse()`.
+- If `/sessions/:id/close` returns `factsDistilled: 0` for a message that clearly states account facts, check `railway logs` for `[qwenClient.distill] dropping candidate that failed schema validation`. If every candidate fails with several `Required` field errors (not just a bad predicate), the model isn't returning the shape the schema expects — confirm the system prompt in `qwenClient.ts` still enumerates the exact predicate/predicateClass values and field list; it was previously just "use the approved predicate names" with no schema given at all.
