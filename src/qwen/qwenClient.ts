@@ -58,7 +58,19 @@ export function createQwenClient(): QwenClient {
 
       const content = response.choices[0]?.message?.content ?? "{\"facts\":[]}";
       const parsed = JSON.parse(content) as { facts?: unknown[] };
-      return (parsed.facts ?? []).map((fact) => DistilledFactCandidateSchema.parse(fact));
+      const candidates: DistilledFactCandidate[] = [];
+      for (const fact of parsed.facts ?? []) {
+        const result = DistilledFactCandidateSchema.safeParse(fact);
+        if (result.success) {
+          candidates.push(result.data);
+        } else {
+          console.warn(
+            "[qwenClient.distill] dropping candidate that failed schema validation:",
+            result.error.issues.map((issue) => issue.message).join("; ")
+          );
+        }
+      }
+      return candidates;
     },
     async adjudicate(input) {
       return this.chat({
