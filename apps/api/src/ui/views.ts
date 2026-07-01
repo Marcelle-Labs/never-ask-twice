@@ -37,7 +37,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       ${BrandLockup({ compact: true })}
       <div style="display:flex;gap:var(--sp-3);align-items:center;">
         <span class="badge ${memoryOn ? 'done' : 'todo'}" id="memory-status">${memoryOn ? 'Memory ON' : 'Memory OFF'}</span>
-        <button class="secondary-btn" onclick="toggleMemory()">${memoryOn ? 'Simulate Cold Start' : 'Enable Memory'}</button>
+        <button class="secondary-btn" onclick="toggleMemory()" title="${memoryOn ? 'Fresh agent — no working context, memory store intact' : 'Reconnect this session to the memory store'}">${memoryOn ? 'Simulate Cold Start' : 'Enable Memory'}</button>
         <button id="close-session-btn" onclick="closeSession()">Close session</button>
       </div>
     </header>
@@ -321,6 +321,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         }
       } catch (err) {
         addTrace('Session close failed — retry', 'error');
+      } finally {
         closeBtn.disabled = false;
       }
     }
@@ -328,8 +329,23 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     function toggleMemory() {
       const params = new URLSearchParams(window.location.search);
       params.set('sessionId', sessionId);
+      const simulatingColdStart = params.get('memory') !== 'off';
       params.set('memory', params.get('memory') === 'off' ? 'on' : 'off');
+      if (simulatingColdStart) {
+        params.set('coldStart', '1');
+      } else {
+        params.delete('coldStart');
+      }
       window.location.search = params.toString();
+    }
+
+    // VR-514: Simulate Cold Start had no visible effect — surface a one-line
+    // explanation in the trace panel on the reload it triggers, once.
+    if (new URLSearchParams(window.location.search).get('coldStart') === '1') {
+      addTrace('Fresh agent — no working context, memory store intact', 'working');
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('coldStart');
+      window.history.replaceState({}, '', cleanUrl.toString());
     }
 
     // VR-489 · UX2: load repeat-question rate from live /eval-snapshot
