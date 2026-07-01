@@ -67,6 +67,30 @@ function humanFactMention(predicate: string, object: string): string {
   return fn ? fn(object) : `${predicate.replace(/_/g, " ")} ${object}`;
 }
 
+// VR-517: once facts are resolved, the first reply in a session gets the full
+// reveal (unchanged — this is the ablation demo beat). Any later turn in the
+// same resolved session gets a short, varied acknowledgment instead of
+// repeating the full fact list every time.
+const ALREADY_RESOLVED_ACKS: Array<(contact: string | null) => string> = [
+  (contact) => contact
+    ? `Still working on getting this over to ${contact} — nothing's changed on my end.`
+    : "Still working this one — nothing's changed on my end.",
+  (contact) => contact
+    ? `Yep, still with you — this is already on its way to ${contact}.`
+    : "Yep, still with you — this is already moving.",
+  (contact) => contact
+    ? `Nothing new to add — ${contact} already has what's needed to pick this up.`
+    : "Nothing new to add — this is already in motion.",
+];
+
+// customerTurns is the total count of customer turns in this session so far,
+// INCLUDING the current one (matches the counting convention already used
+// for VR-508 below). Only called when customerTurns >= 2.
+function humanAlreadyResolvedAck(customerTurns: number, contact: string | null): string {
+  const variant = (customerTurns - 2) % ALREADY_RESOLVED_ACKS.length;
+  return ALREADY_RESOLVED_ACKS[variant](contact);
+}
+
 export interface CitedFact {
   summary: string;
   predicate: string;
@@ -142,9 +166,19 @@ export async function runSupportTurn(input: {
   const contextFacts = facts.filter((f) => f.predicate !== "escalation_contact");
   const contextMentions = contextFacts.map((f) => humanFactMention(f.predicate, f.object));
   const routingLine = escalationFact ? `I'll route this to ${escalationFact.object} now.` : "Routing this now.";
-  const answer = contextMentions.length > 0
+  const fullReveal = contextMentions.length > 0
     ? `I have your account details on file — ${contextMentions.join(", ")}. ${routingLine}`
     : routingLine;
+
+  // VR-517: only the first resolved reply in a session gets the full reveal —
+  // that's the ablation demo beat and must stay exactly as-is. Later turns in
+  // the same resolved session get a varied acknowledgment instead of
+  // repeating the full fact list every time.
+  const sessionEvents = await input.memoryService.store.getEvents(input.sessionId);
+  const customerTurns = sessionEvents.filter((event) => event.role === "customer").length;
+  const answer = customerTurns <= 1
+    ? fullReveal
+    : humanAlreadyResolvedAck(customerTurns, escalationFact?.object ?? null);
 
   return {
     answer,
