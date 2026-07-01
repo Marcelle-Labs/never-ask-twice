@@ -157,6 +157,20 @@ app.post("/turn", async (c) => {
         memoryService: memory,
         now: ts,
       });
+
+      // VR-515: persist the agent's reply as an event too — previously only
+      // the customer's message was appended, so agent bubbles vanished on
+      // a page reload mid-session.
+      if (agentResponse.answer) {
+        await memory.appendTurn({
+          accountId,
+          customerId,
+          sessionId,
+          role: "agent",
+          message: agentResponse.answer,
+          ts: new Date(),
+        });
+      }
     }
 
     return c.json({
