@@ -30,12 +30,36 @@ const PREDICATE_MENTION: Partial<Record<string, (obj: string) => string>> = {
   timezone:           (obj) => `${obj} timezone`,
 };
 
-function humanMissingQuestion(predicates: string[]): string {
+// VR-508: memory-OFF is the control condition — it must keep re-asking every
+// turn (repeat-question-rate stays 1.00), just without repeating the exact
+// same sentence, so it doesn't read as a stuck loop. One-time acknowledgment
+// of the customer's deflection, no ability to resolve without the facts.
+const PREDICATE_LOOKUP_HINT: Partial<Record<string, string>> = {
+  sla_tier:           "your SLA tier is usually in your account settings",
+  product_config:     "your product configuration is on your account's setup page",
+  integration:        "the integration name is in your admin console",
+  escalation_contact: "your escalation contact is your account's designated support contact",
+};
+
+function humanMissingQuestion(predicates: string[], variant = 0): string {
   const phrases = predicates.map((p) => PREDICATE_QUESTION[p] ?? p.replace(/_/g, " "));
+  const list = phrases.length === 1
+    ? phrases[0]
+    : `${phrases.slice(0, -1).join(", ")}, and ${phrases[phrases.length - 1]}`;
+
+  if (variant === 1) {
+    const hint = PREDICATE_LOOKUP_HINT[predicates[0]];
+    return hint
+      ? `No problem — ${hint}, or I can confirm it once you give me a bit more. I'll still need ${list} to move forward.`
+      : `No problem — I can look that up once you give me a bit more. I'll still need ${list} to move forward.`;
+  }
+
+  if (variant === 2) {
+    return `I still don't have what I need to help — could you share ${list}?`;
+  }
+
   if (phrases.length === 1) return `To help you, could you confirm ${phrases[0]}?`;
-  const last = phrases[phrases.length - 1];
-  const rest = phrases.slice(0, -1);
-  return `To get started, I'll need a few details — ${rest.join(", ")}, and ${last}. Happy to help once I have those.`;
+  return `To get started, I'll need a few details — ${list}. Happy to help once I have those.`;
 }
 
 function humanFactMention(predicate: string, object: string): string {
@@ -93,8 +117,19 @@ export async function runSupportTurn(input: {
   );
 
   if (missingPredicates.length > 0) {
+    // VR-508: vary phrasing across turns in memory-OFF only — memory-ON keeps
+    // its original wording untouched. Turn count comes from customer episodic
+    // events already present in the recall bundle (no extra store call).
+    let variant = 0;
+    if (input.memoryMode === "off") {
+      const customerTurns = recall.bundle.filter(
+        (item) => item.kind === "episodic" && (item.payload as { role: string }).role === "customer",
+      ).length;
+      variant = Math.max(0, customerTurns - 1) % 3;
+    }
+
     return {
-      answer: humanMissingQuestion(missingPredicates),
+      answer: humanMissingQuestion(missingPredicates, variant),
       askedForMissingFacts: true,
       citedFacts: facts,
       hallucinatedFacts: [],
