@@ -1,6 +1,34 @@
 import OpenAI from "openai";
 
-import { DistilledFactCandidateSchema, MEMORY_EMBEDDING_DIM, type DistilledFactCandidate } from "../contracts.js";
+import {
+  DistilledFactCandidateSchema,
+  MEMORY_EMBEDDING_DIM,
+  memoryPredicateValues,
+  type DistilledFactCandidate,
+} from "../contracts.js";
+
+const predicateClassValues = [
+  "profile",
+  "contract",
+  "configuration",
+  "relationship",
+  "constraint",
+  "temporal",
+  "issue",
+] as const;
+
+const DISTILL_SYSTEM_PROMPT = `Extract durable support-memory facts from a customer support transcript. Return JSON: {"facts": [...]}.
+
+Each item in "facts" must have exactly these fields:
+- subject: string - who the fact is about (the customer or account name)
+- predicate: one of ${memoryPredicateValues.map((p) => `"${p}"`).join(" | ")}
+- predicateClass: one of ${predicateClassValues.map((c) => `"${c}"`).join(" | ")}
+- object: string - the fact's value
+- confidence: number between 0 and 1
+- rationale: optional string, one sentence explaining why
+- ttlDays: optional positive integer - only set for facts that should expire (e.g. a temporary incident detail); omit it for durable facts like SLA tier, product config, or a contact name
+
+Only use the predicate values listed above. If a stated detail doesn't map to one of them, omit it rather than inventing a new predicate name. Return {"facts": []} if there is nothing durable to extract.`;
 
 export interface QwenClient {
   embed(input: string): Promise<number[]>;
@@ -49,8 +77,7 @@ export function createQwenClient(): QwenClient {
         messages: [
           {
             role: "system",
-            content:
-              "Extract durable support-memory facts as JSON with a top-level facts array. Only use the approved predicate names.",
+            content: DISTILL_SYSTEM_PROMPT,
           },
           { role: "user", content: input.transcript },
         ],
