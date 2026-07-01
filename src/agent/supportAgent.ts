@@ -118,13 +118,15 @@ export async function runSupportTurn(input: {
 
   if (missingPredicates.length > 0) {
     // VR-508: vary phrasing across turns in memory-OFF only — memory-ON keeps
-    // its original wording untouched. Turn count comes from customer episodic
-    // events already present in the recall bundle (no extra store call).
+    // its original wording untouched. Turn count must be scoped to THIS
+    // session, in chronological order — recall.bundle is score-ranked and
+    // token-budget-filtered (drops/reorders entries) and getAllEvents spans
+    // every session this customer has ever had, so neither is a reliable
+    // per-conversation counter. store.getEvents(sessionId) is.
     let variant = 0;
     if (input.memoryMode === "off") {
-      const customerTurns = recall.bundle.filter(
-        (item) => item.kind === "episodic" && (item.payload as { role: string }).role === "customer",
-      ).length;
+      const sessionEvents = await input.memoryService.store.getEvents(input.sessionId);
+      const customerTurns = sessionEvents.filter((event) => event.role === "customer").length;
       variant = Math.max(0, customerTurns - 1) % 3;
     }
 
