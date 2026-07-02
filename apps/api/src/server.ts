@@ -18,6 +18,7 @@ import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
 import { brandFaviconSvg } from "./ui/brand.js";
 import { ChatView, FactsView } from "./ui/views.js";
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, seoHeadTags } from "./ui/seo.js";
 
 // ---------------------------------------------------------------------------
 // Qwen client - zero-vector fallback when DASHSCOPE_API_KEY is absent
@@ -91,17 +92,93 @@ app.get("/favicon.svg", (c) => c.text(brandFaviconSvg, 200, {
 
 // ---------------------------------------------------------------------------
 // GET /
-// Landing page from the bundled design artifact
+// Landing page — static HTML with server-side SEO tag injection
 // ---------------------------------------------------------------------------
 app.get("/", async (c) => {
   const landingPath = fileURLToPath(new URL("./ui/landing.html", import.meta.url));
   try {
-    const html = readFileSync(landingPath, "utf8");
+    let html = readFileSync(landingPath, "utf8");
+    html = html.replace("<!--SEO-->", () =>
+      seoHeadTags({
+        title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+        description: SITE_DESCRIPTION,
+        path: "/",
+      })
+    );
     return c.html(html);
   } catch (err) {
     console.error("[ui] Failed to read landing page:", err);
     return c.text("Landing page not found", 500);
   }
+});
+
+// ---------------------------------------------------------------------------
+// GET /robots.txt, /sitemap.xml, /llms.txt
+// ---------------------------------------------------------------------------
+app.get("/robots.txt", (c) => {
+  const body = `User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: *
+Allow: /
+Disallow: /turn
+Disallow: /sessions/
+Disallow: /eval-snapshot
+Disallow: /facts
+Disallow: /health
+
+Sitemap: ${SITE_URL}/sitemap.xml
+`;
+  return c.text(body, 200, { "Content-Type": "text/plain; charset=utf-8" });
+});
+
+app.get("/sitemap.xml", (c) => {
+  const lastmod = new Date().toISOString().slice(0, 10);
+  const body = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>${SITE_URL}/</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+<url><loc>${SITE_URL}/chat</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+</urlset>
+`;
+  return c.body(body, 200, { "Content-Type": "application/xml; charset=utf-8" });
+});
+
+app.get("/llms.txt", (c) => {
+  const body = `# ${SITE_NAME}
+
+> ${SITE_TAGLINE} ${SITE_DESCRIPTION}
+
+## Product
+
+- [Live demo](${SITE_URL}/chat): Send the same support request with memory on and memory off. Recall chips and the memory trace show exactly which facts the agent used, where they came from, and why.
+- [Landing page](${SITE_URL}/): Overview of the memory architecture and the audit problem it solves.
+
+## About
+
+Built by Qwynn Marcelle for the Qwen Cloud Global AI Hackathon (Track: MemoryAgent). More on the underlying approach: https://marcellelabs.io/insights/building-customer-support-memory-survives-audit
+`;
+  return c.text(body, 200, { "Content-Type": "text/plain; charset=utf-8" });
 });
 
 // ---------------------------------------------------------------------------

@@ -601,3 +601,54 @@ button:active { transform: scale(0.97); }
   background: var(--amber-dim);
   color: var(--amber);
 }
+
+/* ── Mobile smoke test (VR-531) ────────────────────────── */
+/* Bar: "degrades gracefully," not pixel-perfect responsive.
+   Someone tapping through from the landing page on a phone
+   should not hit a horizontal-scroll mess or overlapping
+   panels. Judges use laptops; this is not judged on beauty. */
+@media (max-width: 768px) {
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
+  .app-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-areas:
+      "header"
+      "main"
+      "nav"
+      "side";
+    height: auto;
+    min-height: 100vh;
+  }
+
+  nav {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: var(--sp-4);
+  }
+
+  aside {
+    border-left: none;
+    border-top: 2px solid hsla(142, 71%, 45%, 0.2);
+    padding: var(--sp-4);
+  }
+
+  header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: var(--sp-2) var(--sp-4);
+    gap: var(--sp-2);
+  }
+
+  .message {
+    max-width: 92%;
+  }
+
+  .message-list {
+    padding: var(--sp-4);
+  }
+}
