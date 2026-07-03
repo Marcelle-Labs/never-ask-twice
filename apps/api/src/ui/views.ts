@@ -34,7 +34,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       "Send the same support request with memory on and memory off. Watch recall chips and the memory trace show exactly which facts the agent used, where they came from, and why.",
     path: "/chat",
   })}
-  <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="/static/index.css?v=2">
 </head>
 <body>
   <div class="app-container">
@@ -379,7 +379,7 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Never Ask Twice — Knowledge Manager</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="/static/index.css?v=2">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
