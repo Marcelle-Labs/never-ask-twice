@@ -41,6 +41,7 @@
     "boundary-scan": "bash scripts/boundary-scan.sh",
     "build": "tsc -p tsconfig.build.json && pnpm --filter @never-ask-twice/api build",
     "dev": "pnpm --filter @never-ask-twice/api dev",
+    "demo": "tsx scripts/demo.ts",
     "demo:script-check": "pnpm build && node dist/scripts/demo-script-check.js",
     "eval": "pnpm build && node dist/eval/run.js",
     "gitleaks": "bash -lc 'command -v gitleaks >/dev/null 2>&1 && gitleaks detect || { echo \"gitleaks CLI is required\"; exit 1; }'",
@@ -62,6 +63,7 @@
   },
   "devDependencies": {
     "@hono/node-server": "^2.0.6",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.1",
     "@types/pg": "^8.11.10",
     "railway": "^3.4.1",

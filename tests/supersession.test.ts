@@ -74,4 +74,151 @@ describe("supersession", () => {
     expect(superseded).toHaveLength(1);
     expect(superseded[0]?.supersededBy).toBe(current[0]?.factId);
   });
+
+  it("supersedes by predicate alone when subject strings differ across sessions", async () => {
+    const qwen = new FakeQwenClient();
+    qwen.setEmbedding("Use email.", 1);
+    qwen.setEmbedding("Use phone.", 2);
+    qwen.setEmbedding("Acme preferred_channel email", 1);
+    qwen.setEmbedding("Acme Robotics preferred_channel phone", 2);
+    qwen.setDistillation("customer: Use email.", [
+      {
+        subject: "Acme",
+        predicate: "preferred_channel",
+        predicateClass: "profile",
+        object: "email",
+        confidence: 0.9,
+        metadata: {},
+      },
+    ]);
+    qwen.setDistillation("customer: Use phone.", [
+      {
+        subject: "Acme Robotics",
+        predicate: "preferred_channel",
+        predicateClass: "profile",
+        object: "phone",
+        confidence: 0.9,
+        metadata: {},
+      },
+    ]);
+
+    const store = new InMemoryMemoryStore();
+    const service = new MemoryService(store, qwen);
+
+    await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
+    await service.appendTurn({
+      accountId: "acct-1",
+      customerId: "cust-1",
+      sessionId: "sess-1",
+      role: "customer",
+      message: "Use email.",
+      ts: new Date("2026-06-25T10:00:00.000Z"),
+    });
+    await service.closeSession({
+      sessionId: "sess-1",
+      accountId: "acct-1",
+      customerId: "cust-1",
+      closedAt: new Date("2026-06-25T10:05:00.000Z"),
+    });
+
+    await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-2" });
+    await service.appendTurn({
+      accountId: "acct-1",
+      customerId: "cust-1",
+      sessionId: "sess-2",
+      role: "customer",
+      message: "Use phone.",
+      ts: new Date("2026-06-26T10:00:00.000Z"),
+    });
+    await service.closeSession({
+      sessionId: "sess-2",
+      accountId: "acct-1",
+      customerId: "cust-1",
+      closedAt: new Date("2026-06-26T10:05:00.000Z"),
+    });
+
+    const current = store.semanticFacts.filter((fact) => fact.validTo === null);
+    const superseded = store.semanticFacts.filter((fact) => fact.validTo !== null);
+
+    expect(current).toHaveLength(1);
+    expect(current[0]?.object).toBe("phone");
+    expect(superseded).toHaveLength(1);
+    expect(superseded[0]?.object).toBe("email");
+    expect(superseded[0]?.supersededBy).toBe(current[0]?.factId);
+  });
+
+  it("supersedes an expired-but-unsuperseded fact instead of leaving a unique-index conflict", async () => {
+    const qwen = new FakeQwenClient();
+    qwen.setEmbedding("Use email.", 1);
+    qwen.setEmbedding("Use phone.", 2);
+    qwen.setEmbedding("Acme preferred_channel email", 1);
+    qwen.setEmbedding("Acme preferred_channel phone", 2);
+    qwen.setDistillation("customer: Use email.", [
+      {
+        subject: "Acme",
+        predicate: "preferred_channel",
+        predicateClass: "profile",
+        object: "email",
+        confidence: 0.9,
+        ttlDays: 1,
+        metadata: {},
+      },
+    ]);
+    qwen.setDistillation("customer: Use phone.", [
+      {
+        subject: "Acme",
+        predicate: "preferred_channel",
+        predicateClass: "profile",
+        object: "phone",
+        confidence: 0.9,
+        metadata: {},
+      },
+    ]);
+
+    const store = new InMemoryMemoryStore();
+    const service = new MemoryService(store, qwen);
+
+    await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-1" });
+    await service.appendTurn({
+      accountId: "acct-1",
+      customerId: "cust-1",
+      sessionId: "sess-1",
+      role: "customer",
+      message: "Use email.",
+      ts: new Date("2026-06-25T10:00:00.000Z"),
+    });
+    await service.closeSession({
+      sessionId: "sess-1",
+      accountId: "acct-1",
+      customerId: "cust-1",
+      closedAt: new Date("2026-06-25T10:05:00.000Z"),
+    });
+
+    // Session 2 closes well after the TTL expired — the old fact has
+    // valid_to IS NULL but expiresAt < closedAt. The service must still
+    // find and supersede it before inserting the new one.
+    await service.createSession({ accountId: "acct-1", customerId: "cust-1", sessionId: "sess-2" });
+    await service.appendTurn({
+      accountId: "acct-1",
+      customerId: "cust-1",
+      sessionId: "sess-2",
+      role: "customer",
+      message: "Use phone.",
+      ts: new Date("2026-06-27T10:00:00.000Z"),
+    });
+    await service.closeSession({
+      sessionId: "sess-2",
+      accountId: "acct-1",
+      customerId: "cust-1",
+      closedAt: new Date("2026-06-27T10:05:00.000Z"),
+    });
+
+    const current = store.semanticFacts.filter((fact) => fact.validTo === null);
+    const superseded = store.semanticFacts.filter((fact) => fact.validTo !== null);
+
+    expect(current).toHaveLength(1);
+    expect(current[0]?.object).toBe("phone");
+    expect(superseded).toHaveLength(1);
+    expect(superseded[0]?.supersededBy).toBe(current[0]?.factId);
+  });
 });

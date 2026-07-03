@@ -78,7 +78,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     </nav>
 
     <main>
-      <div class="message-list" id="chat-thread">
+      <div class="message-list" id="chat-thread" data-testid="chat-thread">
         ${messages.map(m => `
           <div class="message ${htmlEscape(m.role)}">
             <div class="content">${htmlEscape(m.message)}</div>
@@ -96,7 +96,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 
     <aside id="debug-panel">
       <h3 class="panel-label">Memory Trace</h3>
-      <div id="trace-logs">
+      <div id="trace-logs" data-testid="memory-trace">
         <div class="trace-empty" id="trace-empty-state">
           <div class="trace-empty-ring"></div>
           <div>Awaiting first interaction</div>
@@ -314,13 +314,13 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         const data = await res.json();
         addTrace('Session closed', 'episodic');
         if (qwenConfigured) {
+          addTrace('Qwen distillation complete', 'episodic');
           if (data.factsDistilled > 0) {
-            addTrace('Qwen distillation complete', 'episodic');
             addTrace(data.factsDistilled + ' semantic fact(s) written', 'semantic');
-            addTrace('Supersession check complete', 'episodic');
           } else {
-            addTrace('Distillation complete — no new facts', 'episodic');
+            addTrace('No new facts written', 'semantic');
           }
+          addTrace('Supersession check complete', 'episodic');
         } else {
           addTrace('Distillation skipped — local-safe mode (no DASHSCOPE_API_KEY)', 'episodic');
           addTrace('No semantic facts written', 'episodic');
@@ -403,7 +403,7 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--sp-5);">
+      <div data-testid="fact-store" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--sp-5);">
         ${facts.length ? facts.map(f => `
           <div class="card trace-semantic">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-3);">

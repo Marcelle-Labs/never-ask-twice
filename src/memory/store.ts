@@ -74,6 +74,15 @@ export class InMemoryMemoryStore implements MemoryStore {
     );
   }
 
+  async unsupersededFacts(accountId: string, customerId: string) {
+    return this.semanticFacts.filter(
+      (fact) =>
+        fact.accountId === accountId &&
+        fact.customerId === customerId &&
+        fact.validTo === null
+    );
+  }
+
   async getSemanticFactsBySession(sessionId: string) {
     return this.semanticFacts.filter((f) => f.sessionId === sessionId);
   }
@@ -95,8 +104,8 @@ export class InMemoryMemoryStore implements MemoryStore {
     );
   }
 
-  async insertSemanticFact(record: Omit<SemanticFactRecord, "factId">) {
-    const fact = { ...record, factId: randomUUID() };
+  async insertSemanticFact(record: Omit<SemanticFactRecord, "factId"> & { factId?: string }) {
+    const fact = { ...record, factId: record.factId ?? randomUUID() };
     this.semanticFacts.push(fact);
     return fact;
   }

@@ -196,6 +196,38 @@ export class DrizzleMemoryStore implements MemoryStore {
     }));
   }
 
+  async unsupersededFacts(accountId: string, customerId: string): Promise<SemanticFactRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(schema.semanticFacts)
+      .where(
+        and(
+          eq(schema.semanticFacts.accountId, accountId),
+          eq(schema.semanticFacts.customerId, customerId),
+          isNull(schema.semanticFacts.validTo)
+        )
+      );
+
+    return rows.map((r) => ({
+      factId: r.factId,
+      accountId: r.accountId,
+      customerId: r.customerId,
+      sessionId: r.sessionId ?? null,
+      subject: r.subject,
+      predicate: r.predicate as SemanticFactRecord["predicate"],
+      predicateClass: r.predicateClass,
+      object: r.object,
+      confidence: r.confidence,
+      adjudicationRationale: r.adjudicationRationale ?? null,
+      validFrom: r.validFrom,
+      validTo: r.validTo ?? null,
+      expiresAt: r.expiresAt ?? null,
+      supersededBy: r.supersededBy ?? null,
+      metadata: r.metadata as Record<string, unknown>,
+      embedding: r.embedding as number[],
+    }));
+  }
+
   async getSemanticFactsBySession(sessionId: string): Promise<SemanticFactRecord[]> {
     const rows = await this.db
       .select()
@@ -273,8 +305,8 @@ export class DrizzleMemoryStore implements MemoryStore {
     }));
   }
 
-  async insertSemanticFact(record: Omit<SemanticFactRecord, "factId">): Promise<SemanticFactRecord> {
-    const factId = randomUUID();
+  async insertSemanticFact(record: Omit<SemanticFactRecord, "factId"> & { factId?: string }): Promise<SemanticFactRecord> {
+    const factId = record.factId ?? randomUUID();
     await this.db.insert(schema.semanticFacts).values({
       factId,
       accountId: record.accountId,

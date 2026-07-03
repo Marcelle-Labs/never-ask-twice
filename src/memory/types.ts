@@ -76,10 +76,11 @@ export interface MemoryStore {
   ): Promise<WorkingMemoryRecord[]>;
 
   currentFacts(accountId: string, customerId: string, now: Date): Promise<SemanticFactRecord[]>;
+  unsupersededFacts(accountId: string, customerId: string): Promise<SemanticFactRecord[]>;
   getSemanticFactsBySession(sessionId: string): Promise<SemanticFactRecord[]>;
   getFactById(factId: string): Promise<SemanticFactRecord | undefined>;
   getFactsByPredicateClass(predicateClass: string): Promise<SemanticFactRecord[]>;
-  insertSemanticFact(record: Omit<SemanticFactRecord, "factId">): Promise<SemanticFactRecord>;
+  insertSemanticFact(record: Omit<SemanticFactRecord, "factId"> & { factId?: string }): Promise<SemanticFactRecord>;
   updateSemanticFact(factId: string, updates: Partial<SemanticFactRecord>): Promise<void>;
 
   addProvenance(record: SemanticFactProvenanceRecord): Promise<void>;

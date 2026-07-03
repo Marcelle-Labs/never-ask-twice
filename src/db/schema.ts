@@ -75,7 +75,7 @@ export const semanticFacts = pgTable(
   (table) => [
     check("confidence_check", sql`${table.confidence} >= 0 AND ${table.confidence} <= 1`),
     uniqueIndex("semantic_facts_one_current_fact")
-      .on(table.accountId, table.customerId, table.subject, table.predicate)
+      .on(table.accountId, table.customerId, table.predicate)
       .where(sql`${table.validTo} IS NULL`),
   ],
 );

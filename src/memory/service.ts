@@ -146,9 +146,11 @@ export class MemoryService {
     const candidates = await this.qwenClient.distill({ transcript });
     const insertedFacts: SemanticFactRecord[] = [];
 
-    const existingFacts = await this.store.currentFacts(input.accountId, input.customerId, input.closedAt);
+    const existingFacts = await this.store.unsupersededFacts(input.accountId, input.customerId);
 
-    // Dedup candidates by (subject, predicate) to avoid violating unique index.
+    // Dedup candidates by predicate within this distillation run. The identity
+    // boundary for a customer fact is (accountId, customerId, predicate), not
+    // subject — Qwen returns varying subject strings across runs.
     // A real Qwen distillation can return predicates outside the enum (e.g. "customer_name");
     // drop those candidates instead of letting one bad one crash the whole close.
     const dedupedCandidates = new Map<string, DistilledFactCandidate>();
@@ -162,7 +164,7 @@ export class MemoryService {
         continue;
       }
       const candidate = parsed.data;
-      const key = `${candidate.subject}|${candidate.predicate}`;
+      const key = candidate.predicate;
       dedupedCandidates.set(key, candidate); // last-wins
     }
 
@@ -170,11 +172,11 @@ export class MemoryService {
       const embedding = await this.qwenClient.embed(
         `${candidate.subject} ${candidate.predicate} ${candidate.object}`
       );
-      const current = existingFacts.find(
-        (fact) => fact.subject === candidate.subject && fact.predicate === candidate.predicate
+      const current = existingFacts.filter(
+        (fact) => fact.predicate === candidate.predicate
       );
 
-      if (current && current.object === candidate.object) {
+      if (current.length === 1 && current[0]!.object === candidate.object) {
         continue;
       }
 
@@ -182,7 +184,21 @@ export class MemoryService {
         ? new Date(input.closedAt.getTime() + candidate.ttlDays * 24 * 3_600_000)
         : null;
 
+      // Pre-generate the factId so we can supersede existing facts before
+      // inserting the new one. With the unique index on
+      // (account_id, customer_id, predicate) WHERE valid_to IS NULL, inserting
+      // before superseding would violate the constraint in Postgres.
+      const newFactId = randomUUID();
+
+      for (const fact of current) {
+        await this.store.updateSemanticFact(fact.factId, {
+          validTo: input.closedAt,
+          supersededBy: newFactId,
+        });
+      }
+
       const newFact = await this.store.insertSemanticFact({
+        factId: newFactId,
         accountId: input.accountId,
         customerId: input.customerId,
         sessionId: input.sessionId,
@@ -199,13 +215,6 @@ export class MemoryService {
         metadata: candidate.metadata,
         embedding,
       });
-
-      if (current) {
-        await this.store.updateSemanticFact(current.factId, {
-          validTo: input.closedAt,
-          supersededBy: newFact.factId,
-        });
-      }
 
       // Session-level provenance: link each new fact to all events in this session.
       // Per-event attribution would require distillation to return source event IDs (deferred).

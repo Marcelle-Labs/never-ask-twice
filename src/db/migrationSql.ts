@@ -71,8 +71,32 @@ CREATE TABLE IF NOT EXISTS forgetting_policy (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Replace the old unique index that included subject in the key.
+-- Subject is display/provenance text, not an identity boundary — Qwen returns
+-- varying subject strings across distillation runs, which caused duplicate
+-- facts for the same logical predicate.
+DROP INDEX IF EXISTS semantic_facts_one_current_fact;
+
+-- Supersede duplicate current facts per (account_id, customer_id, predicate),
+-- keeping only the newest by valid_from. This must run before recreating the
+-- unique index to avoid constraint violations.
+UPDATE semantic_facts AS s
+SET valid_to = s2.valid_from, superseded_by = s2.fact_id
+FROM (
+  SELECT DISTINCT ON (account_id, customer_id, predicate)
+    fact_id, account_id, customer_id, predicate, valid_from
+  FROM semantic_facts
+  WHERE valid_to IS NULL
+  ORDER BY account_id, customer_id, predicate, valid_from DESC, fact_id DESC
+) AS s2
+WHERE s.account_id = s2.account_id
+  AND s.customer_id = s2.customer_id
+  AND s.predicate = s2.predicate
+  AND s.fact_id <> s2.fact_id
+  AND s.valid_to IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS semantic_facts_one_current_fact
-ON semantic_facts(account_id, customer_id, subject, predicate)
+ON semantic_facts(account_id, customer_id, predicate)
 WHERE valid_to IS NULL;
 
 CREATE INDEX IF NOT EXISTS episodic_events_customer_ts_idx
