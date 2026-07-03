@@ -314,13 +314,13 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         const data = await res.json();
         addTrace('Session closed', 'episodic');
         if (qwenConfigured) {
-          addTrace('Qwen distillation complete', 'episodic');
           if (data.factsDistilled > 0) {
+            addTrace('Qwen distillation complete', 'episodic');
             addTrace(data.factsDistilled + ' semantic fact(s) written', 'semantic');
+            addTrace('Supersession check complete', 'episodic');
           } else {
-            addTrace('No new facts written', 'semantic');
+            addTrace('Distillation complete — no new facts', 'episodic');
           }
-          addTrace('Supersession check complete', 'episodic');
         } else {
           addTrace('Distillation skipped — local-safe mode (no DASHSCOPE_API_KEY)', 'episodic');
           addTrace('No semantic facts written', 'episodic');
