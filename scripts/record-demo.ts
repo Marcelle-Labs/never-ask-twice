@@ -1,6 +1,6 @@
 import { chromium, expect } from "@playwright/test";
 
-const BASE_URL = process.env.DEMO_BASE_URL ?? "https://never-ask-twice-production.up.railway.app";
+const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
 const DEMO_PROMPT = "the integration is failing again, can you route this";
 const SETUP_MESSAGE =
   "We're Acme Robotics. Our SLA tier is gold, our product config requires SSO, the failing integration is Salesforce, and our escalation contact is Priya.";

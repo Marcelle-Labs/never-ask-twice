@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const BASE_URL = process.env.DEMO_BASE_URL ?? "https://never-ask-twice-production.up.railway.app";
+const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
 
 export default defineConfig({
   testDir: "./tests",

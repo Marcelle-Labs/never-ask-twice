@@ -46,7 +46,7 @@ railway up
 ## Verify after deployment
 
 ```bash
-export RAILWAY_URL=https://never-ask-twice-production.up.railway.app
+export RAILWAY_URL=https://neverasktwice.dev
 
 curl -fsS "$RAILWAY_URL/health"
 ```
@@ -54,7 +54,7 @@ curl -fsS "$RAILWAY_URL/health"
 ## Proof block
 
 ```text
-Railway URL: https://never-ask-twice-production.up.railway.app
+Railway URL: https://neverasktwice.dev
 Verified at: 2026-07-01, deployment fa6acbf9 (build SUCCESS)
 
 /health: {"ok":true,"qwenConfigured":true,"databaseConfigured":true,"mode":"qwen-live"}

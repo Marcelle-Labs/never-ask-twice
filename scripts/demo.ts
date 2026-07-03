@@ -4,7 +4,7 @@ const args = process.argv.slice(2);
 const isDryRun = args.includes("--dry-run");
 const isLive = args.includes("--live");
 
-const BASE_URL = process.env.DEMO_BASE_URL ?? "https://never-ask-twice-production.up.railway.app";
+const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
 
 function printUsage() {
   console.log(`

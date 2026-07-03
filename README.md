@@ -14,7 +14,7 @@ Enterprise Support MemoryAgent on Qwen Cloud
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
 
-**Live demo:** [never-ask-twice-production.up.railway.app](https://never-ask-twice-production.up.railway.app) — try `/chat`, or hit `/health` directly.
+**Live demo:** [neverasktwice.dev](https://neverasktwice.dev) — try `/chat`, or hit `/health` directly.
 
 Customers don't want a smarter chatbot if they still have to repeat their SLA, setup, open issue, and escalation contact every time they come back.
 
@@ -38,13 +38,13 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
 |Qwen-backed live path|Done|Live on Railway with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
-|Railway deployment (primary live URL)|Done|[never-ask-twice-production.up.railway.app](https://never-ask-twice-production.up.railway.app) — Neon-backed, turn → close → recall cycle verified end-to-end. See [`deploy/railway.md`](deploy/railway.md).|
+|Railway deployment (primary live URL)|Done|[neverasktwice.dev](https://neverasktwice.dev) — Neon-backed, turn → close → recall cycle verified end-to-end. See [`deploy/railway.md`](deploy/railway.md).|
 |Alibaba Function Compute deployment|Blocked on Alibaba ID verification (KYC)|`s.yaml` and deployment instructions exist and are deployable in shape; not the app. Swap from Railway is a `DATABASE_URL` change. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
 |Demo video|Pending|Should use the frozen Acme scenario and the eval output line.|
 
 ## Judge path
 
-1. Try the live deployment: [never-ask-twice-production.up.railway.app](https://never-ask-twice-production.up.railway.app) — `/chat` for the UI, `/health` for capability status.
+1. Try the live deployment: [neverasktwice.dev](https://neverasktwice.dev) — `/chat` for the UI, `/health` for capability status.
 2. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
 3. Run the ablation:
 
