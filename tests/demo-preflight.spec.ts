@@ -28,7 +28,7 @@ test.describe("Never Ask Twice — live demo preflight", () => {
     }
 
     const sessionId = `seed-${Date.now()}`;
-    await page.request.post(`${BASE_URL}/turn`, {
+    const turnRes = await page.request.post(`${BASE_URL}/turn`, {
       data: {
         accountId: ACCOUNT_ID,
         customerId: CUSTOMER_ID,
@@ -38,6 +38,7 @@ test.describe("Never Ask Twice — live demo preflight", () => {
         memoryMode: "on",
       },
     });
+    expect(turnRes.ok()).toBeTruthy();
     const closeRes = await page.request.post(`${BASE_URL}/sessions/${sessionId}/close`, {
       data: { accountId: ACCOUNT_ID, customerId: CUSTOMER_ID },
     });
@@ -73,6 +74,17 @@ test.describe("Never Ask Twice — live demo preflight", () => {
     await expect(
       agentContent.getByText(/what SLA tier.*configuration.*integration.*escalation/i),
     ).not.toBeVisible();
+  });
+
+  test("facts dashboard — semantic facts and provenance", async ({ page }) => {
+    await page.goto(`${BASE_URL}/facts`, { waitUntil: "networkidle" });
+
+    await expect(page.getByRole("heading", { name: /semantic fact store/i })).toBeVisible();
+    await expect(page.getByText(/priya/i)).toBeVisible();
+    await expect(page.getByText(/salesforce/i)).toBeVisible();
+    await expect(page.getByText(/\bsso\b/i)).toBeVisible();
+    await expect(page.getByText(/gold/i)).toBeVisible();
+    await expect(page.getByText(/repeat-question rate/i)).toBeVisible();
   });
 
   test("session close — distillation and write-path events", async ({ page }) => {
@@ -121,14 +133,4 @@ test.describe("Never Ask Twice — live demo preflight", () => {
     ).toBeVisible();
   });
 
-  test("facts dashboard — semantic facts and provenance", async ({ page }) => {
-    await page.goto(`${BASE_URL}/facts`, { waitUntil: "networkidle" });
-
-    await expect(page.getByRole("heading", { name: /semantic fact store/i })).toBeVisible();
-    await expect(page.getByText(/priya/i)).toBeVisible();
-    await expect(page.getByText(/salesforce/i)).toBeVisible();
-    await expect(page.getByText(/\bsso\b/i)).toBeVisible();
-    await expect(page.getByText(/gold/i)).toBeVisible();
-    await expect(page.getByText(/repeat-question rate/i)).toBeVisible();
-  });
 });

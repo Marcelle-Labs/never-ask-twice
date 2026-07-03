@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import readline from "node:readline/promises";
 
 const args = process.argv.slice(2);
 const isDryRun = args.includes("--dry-run");
@@ -51,16 +52,21 @@ if (isDryRun) {
 }
 
 if (isLive) {
-  console.log(`[demo] Recording driver against ${BASE_URL}`);
-  console.log("[demo] Start OBS screen capture now, then press Enter to begin...");
-  try {
-    execSync(`npx tsx scripts/record-demo.ts`, {
-      stdio: "inherit",
-      env: { ...process.env, DEMO_BASE_URL: BASE_URL },
-    });
-    console.log("[demo] Recording complete");
-  } catch {
-    console.error("[demo] Recording failed");
-    process.exit(1);
-  }
+  (async () => {
+    console.log(`[demo] Recording driver against ${BASE_URL}`);
+    console.log("[demo] Start OBS screen capture now, then press Enter to begin...");
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    await rl.question("");
+    rl.close();
+    try {
+      execSync(`npx tsx scripts/record-demo.ts`, {
+        stdio: "inherit",
+        env: { ...process.env, DEMO_BASE_URL: BASE_URL },
+      });
+      console.log("[demo] Recording complete");
+    } catch {
+      console.error("[demo] Recording failed");
+      process.exit(1);
+    }
+  })();
 }

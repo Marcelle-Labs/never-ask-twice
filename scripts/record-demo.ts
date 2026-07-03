@@ -55,97 +55,99 @@ async function main() {
     });
     const page = await context.newPage();
 
-  // 0:00–0:15 Landing
-  console.log("[record-demo] Landing page");
-  await page.goto(BASE_URL, { waitUntil: "networkidle" });
-  await wait(15_000);
+    // 0:00–0:15 Landing
+    console.log("[record-demo] Landing page");
+    await page.goto(BASE_URL, { waitUntil: "networkidle" });
+    await wait(15_000);
 
-  // 0:15–0:25 Enter chat
-  console.log("[record-demo] Entering chat");
-  const demoLink = page.getByRole("link", { name: /live demo/i }).first();
-  if (await demoLink.isVisible().catch(() => false)) {
-    await demoLink.click();
-  } else {
-    await page.goto(`${BASE_URL}/chat`, { waitUntil: "networkidle" });
-  }
-  await expect(page.locator("#memory-status")).toHaveText(/Memory ON/i, { timeout: 15_000 });
-  await wait(10_000);
+    // 0:15–0:25 Enter chat
+    console.log("[record-demo] Entering chat");
+    const demoLink = page.getByRole("link", { name: /live demo/i }).first();
+    if (await demoLink.isVisible().catch(() => false)) {
+      await demoLink.click();
+    } else {
+      await page.goto(`${BASE_URL}/chat`, { waitUntil: "networkidle" });
+    }
+    await expect(page.locator("#memory-status")).toHaveText(/Memory ON/i, { timeout: 15_000 });
+    await wait(10_000);
 
-  // 0:25–0:40 Establish memory-on state
-  console.log("[record-demo] Memory ON establishing");
-  await page.mouse.move(940, 100);
-  await wait(2_000);
-  await page.mouse.move(170, 300);
-  await wait(3_000);
-  await page.mouse.move(980, 300);
-  await wait(10_000);
+    // 0:25–0:40 Establish memory-on state
+    console.log("[record-demo] Memory ON establishing");
+    await page.mouse.move(940, 100);
+    await wait(2_000);
+    await page.mouse.move(170, 300);
+    await wait(3_000);
+    await page.mouse.move(980, 300);
+    await wait(10_000);
 
-  // 0:40–0:55 Send request
-  console.log("[record-demo] Sending demo prompt (memory ON)");
-  const input = page.locator("#user-input");
-  await input.fill(DEMO_PROMPT);
-  await wait(1_000);
-  await page.getByRole("button", { name: "Send" }).click();
+    // 0:40–0:55 Send request
+    console.log("[record-demo] Sending demo prompt (memory ON)");
+    const input = page.locator("#user-input");
+    await input.fill(DEMO_PROMPT);
+    await wait(1_000);
+    await page.getByRole("button", { name: "Send" }).click();
 
-  // 0:55–1:25 Show memory recall
-  console.log("[record-demo] Waiting for memory recall");
-  await expect(page.locator('[data-testid="chat-thread"] .message.agent .content').getByText(/priya/i).first()).toBeVisible({ timeout: 30_000 });
-  await page.mouse.move(600, 430);
-  await wait(7_000);
-  await page.mouse.move(980, 430);
-  await wait(12_000);
+    // 0:55–1:25 Show memory recall
+    console.log("[record-demo] Waiting for memory recall");
+    await expect(page.locator('#chat-thread .message.agent .content').getByText(/priya/i).first()).toBeVisible({ timeout: 30_000 });
+    await page.mouse.move(600, 430);
+    await wait(7_000);
+    await page.mouse.move(980, 430);
+    await wait(12_000);
 
-  // 1:25–1:55 Close session / distillation
-  console.log("[record-demo] Closing session for distillation");
-  await page.getByRole("button", { name: /close session/i }).click();
-  await expect(page.locator('[data-testid="memory-trace"]').getByText(/session closed/i)).toBeVisible({
-    timeout: 20_000,
-  });
-  await expect(page.locator('[data-testid="memory-trace"]').getByText(/qwen distillation complete/i)).toBeVisible({
-    timeout: 20_000,
-  });
-  await expect(
-    page.locator('[data-testid="memory-trace"]').getByText(/semantic fact\(s\) written|no new facts/i),
-  ).toBeVisible();
-  await expect(page.locator('[data-testid="memory-trace"]').getByText(/supersession check/i)).toBeVisible();
-  await page.mouse.move(985, 520);
-  await wait(18_000);
+    // 1:25–1:55 Close session / distillation
+    console.log("[record-demo] Closing session for distillation");
+    await page.getByRole("button", { name: /close session/i }).click();
+    await expect(page.locator('#trace-logs').getByText(/session closed/i)).toBeVisible({
+      timeout: 20_000,
+    });
+    // Production shows different trace messages depending on whether
+    // factsDistilled > 0. Use broad patterns that match both paths (same
+    // reasoning as tests/demo-preflight.spec.ts).
+    await expect(page.locator('#trace-logs').getByText(/distillation complete/i)).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(
+      page.locator('#trace-logs').getByText(/semantic fact\(s\) written|no new facts/i),
+    ).toBeVisible();
+    await page.mouse.move(985, 520);
+    await wait(18_000);
 
-  // 1:55–2:05 Memory off
-  console.log("[record-demo] Switching to memory OFF");
-  await page.goto(`${BASE_URL}/chat?memory=off`, { waitUntil: "networkidle" });
-  await expect(page.locator("#memory-status")).toHaveText(/Memory OFF/i, { timeout: 15_000 });
-  await wait(10_000);
+    // 1:55–2:05 Memory off
+    console.log("[record-demo] Switching to memory OFF");
+    await page.goto(`${BASE_URL}/chat?memory=off`, { waitUntil: "networkidle" });
+    await expect(page.locator("#memory-status")).toHaveText(/Memory OFF/i, { timeout: 15_000 });
+    await wait(10_000);
 
-  // 2:05–2:20 Send same request
-  console.log("[record-demo] Sending demo prompt (memory OFF)");
-  const offInput = page.locator("#user-input");
-  await offInput.fill(DEMO_PROMPT);
-  await wait(1_000);
-  await page.getByRole("button", { name: "Send" }).click();
+    // 2:05–2:20 Send same request
+    console.log("[record-demo] Sending demo prompt (memory OFF)");
+    const offInput = page.locator("#user-input");
+    await offInput.fill(DEMO_PROMPT);
+    await wait(1_000);
+    await page.getByRole("button", { name: "Send" }).click();
 
-  // 2:20–2:40 Show memory-off contrast
-  console.log("[record-demo] Waiting for memory-off contrast");
-  await expect(page.locator('[data-testid="chat-thread"] .message.agent .content').getByText(/sla tier/i)).toBeVisible({ timeout: 30_000 });
-  await page.mouse.move(600, 430);
-  await wait(8_000);
-  await page.mouse.move(985, 430);
-  await wait(12_000);
+    // 2:20–2:40 Show memory-off contrast
+    console.log("[record-demo] Waiting for memory-off contrast");
+    await expect(page.locator('#chat-thread .message.agent .content').getByText(/sla tier/i)).toBeVisible({ timeout: 30_000 });
+    await page.mouse.move(600, 430);
+    await wait(8_000);
+    await page.mouse.move(985, 430);
+    await wait(12_000);
 
-  // 2:40–2:55 Facts dashboard
-  console.log("[record-demo] Facts dashboard");
-  await page.goto(`${BASE_URL}/facts`, { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: /semantic fact store/i })).toBeVisible({
-    timeout: 15_000,
-  });
-  await page.mouse.move(350, 300);
-  await wait(5_000);
-  await page.mouse.move(700, 500);
-  await wait(10_000);
+    // 2:40–2:55 Facts dashboard
+    console.log("[record-demo] Facts dashboard");
+    await page.goto(`${BASE_URL}/facts`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: /semantic fact store/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.mouse.move(350, 300);
+    await wait(5_000);
+    await page.mouse.move(700, 500);
+    await wait(10_000);
 
-  // Hold final frame
-  console.log("[record-demo] Holding final frame");
-  await wait(5_000);
+    // Hold final frame
+    console.log("[record-demo] Holding final frame");
+    await wait(5_000);
   } finally {
     await browser.close();
   }
