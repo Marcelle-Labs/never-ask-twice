@@ -46,11 +46,11 @@ async function main() {
   const browser = await chromium.launch({
     headless: false,
     slowMo: 150,
-    args: ["--window-size=1920,1080"],
+    args: ["--window-size=1600,900", "--force-device-scale-factor=1"],
   });
   try {
     const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 },
+      viewport: { width: 1600, height: 900 },
       deviceScaleFactor: 1,
     });
     const page = await context.newPage();

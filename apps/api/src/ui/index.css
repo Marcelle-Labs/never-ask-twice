@@ -132,6 +132,21 @@ header {
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   z-index: 100;
+  overflow: visible; /* allow tooltips, but children must stay inside header */
+}
+
+header .chat-controls {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+header .chat-controls > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .logo {
@@ -161,6 +176,25 @@ main {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* allow grid item to shrink when viewport is short or zoomed */
+}
+
+.chat-form {
+  flex-shrink: 0;
+  flex-basis: auto;
+  padding: var(--sp-6);
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+#chat-form {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+#chat-form input[type="text"] {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Memory trace panel — visual primacy ───────────────── */
@@ -279,7 +313,7 @@ aside {
 
 /* ── Chat messages ─────────────────────────────────────── */
 .message-list {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
   padding: var(--sp-8);

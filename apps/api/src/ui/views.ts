@@ -40,7 +40,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
   <div class="app-container">
     <header>
       ${BrandLockup({ compact: true })}
-      <div style="display:flex;gap:var(--sp-3);align-items:center;">
+      <div class="chat-controls">
         <span class="badge ${memoryOn ? 'done' : 'todo'}" id="memory-status">${memoryOn ? 'Memory ON' : 'Memory OFF'}</span>
         <button class="secondary-btn" onclick="toggleMemory()" title="${memoryOn ? 'Fresh agent — no working context, memory store intact' : 'Reconnect this session to the memory store'}">${memoryOn ? 'Simulate Cold Start' : 'Enable Memory'}</button>
         <button id="close-session-btn" onclick="closeSession()">Close session</button>
@@ -86,8 +86,8 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
           </div>
         `).join('')}
       </div>
-      <div style="padding:var(--sp-6);border-top:1px solid var(--border);background:var(--bg);">
-        <form id="chat-form" style="display:flex;gap:var(--sp-3);">
+      <div class="chat-form">
+        <form id="chat-form">
           <input type="text" id="user-input" placeholder="Type a message…" required autocomplete="off">
           <button type="submit">Send</button>
         </form>
