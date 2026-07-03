@@ -280,6 +280,8 @@ aside {
 /* ── Chat messages ─────────────────────────────────────── */
 .message-list {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--sp-8);
   display: flex;
   flex-direction: column;
