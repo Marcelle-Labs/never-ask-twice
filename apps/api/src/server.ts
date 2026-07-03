@@ -379,10 +379,10 @@ app.get("/static/index.css", (c) => {
   const cssPath = fileURLToPath(new URL("./ui/index.css", import.meta.url));
   try {
     const css = readFileSync(cssPath, "utf8");
-    return c.text(css, 200, { "Content-Type": "text/css" });
+    return c.text(css, 200, { "Content-Type": "text/css", "Cache-Control": "no-store" });
   } catch (err) {
     console.error("[ui] Failed to read CSS:", err);
-    return c.text("body { background: #000; color: #fff; }", 200, { "Content-Type": "text/css" });
+    return c.text("body { background: #000; color: #fff; }", 200, { "Content-Type": "text/css", "Cache-Control": "no-store" });
   }
 });
 
