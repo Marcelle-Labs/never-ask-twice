@@ -1,6 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 
 const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
+const WINDOW_POSITION = process.env.DEMO_WINDOW_POSITION ?? "0,0";
 const DEMO_PROMPT = "the integration is failing again, can you route this";
 const SETUP_MESSAGE =
   "We're Acme Robotics. Our SLA tier is gold, our product config requires SSO, the failing integration is Salesforce, and our escalation contact is Priya.";
@@ -59,7 +60,11 @@ async function main() {
   const browser = await chromium.launch({
     headless: false,
     slowMo: 150,
-    args: ["--window-size=1920,1080", "--force-device-scale-factor=1"],
+    args: [
+      "--window-size=1920,1080",
+      "--force-device-scale-factor=1",
+      `--window-position=${WINDOW_POSITION}`,
+    ],
   });
   try {
     const context = await browser.newContext({
