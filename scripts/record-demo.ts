@@ -10,38 +10,6 @@ const CUSTOMER_ID = "jason_99";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function getViewport() {
-  // Probe the screen once so the recording window fits the actual display,
-  // even with macOS scaling or a smaller monitor. We launch and close a
-  // throwaway browser because window.screen is only available in a real page.
-  const probe = await chromium.launch({
-    headless: false,
-    args: ["--window-position=0,0"],
-  });
-  try {
-    const probePage = await probe.newPage();
-    const screen = await probePage.evaluate(() => ({
-      availWidth: window.screen.availWidth,
-      availHeight: window.screen.availHeight,
-      width: window.screen.width,
-      height: window.screen.height,
-      dpr: window.devicePixelRatio,
-    }));
-    const width = Math.min(1920, screen.availWidth);
-    const height = Math.min(1080, screen.availHeight - 70);
-    console.log(`[record-demo] Screen: ${screen.width}x${screen.height} (avail ${screen.availWidth}x${screen.availHeight}), DPR ${screen.dpr}`);
-    console.log(`[record-demo] Recording viewport: ${width}x${height}`);
-    return {
-      width,
-      height,
-      scaleX: width / 1920,
-      scaleY: height / 1080,
-    };
-  } finally {
-    await probe.close();
-  }
-}
-
 async function ensureSeeded() {
   const res = await fetch(`${BASE_URL}/eval-snapshot`);
   if (!res.ok) throw new Error(`eval-snapshot failed: HTTP ${res.status}`);
@@ -88,24 +56,17 @@ async function ensureSeeded() {
 async function main() {
   await ensureSeeded();
 
-  const { width, height, scaleX, scaleY } = await getViewport();
-
   const browser = await chromium.launch({
     headless: false,
     slowMo: 150,
-    args: [
-      `--window-size=${width},${height}`,
-      "--force-device-scale-factor=1",
-      "--window-position=0,0",
-    ],
+    args: ["--window-size=1920,1080", "--force-device-scale-factor=1"],
   });
   try {
     const context = await browser.newContext({
-      viewport: { width, height },
+      viewport: { width: 1920, height: 1080 },
       deviceScaleFactor: 1,
     });
     const page = await context.newPage();
-    const move = (x: number, y: number) => page.mouse.move(Math.round(x * scaleX), Math.round(y * scaleY));
 
     // 0:00–0:08 Landing (was 15s — title card doesn't need more)
     console.log("[record-demo] Landing page");
@@ -125,11 +86,11 @@ async function main() {
 
     // 0:16–0:24 Establish memory-on state (was 15s — 3+2+3 is enough for eye guidance)
     console.log("[record-demo] Memory ON establishing");
-    move(940, 100);
+    await page.mouse.move(940, 100);
     await wait(3_000);
-    move(170, 300);
+    await page.mouse.move(170, 300);
     await wait(2_000);
-    move(980, 300);
+    await page.mouse.move(980, 300);
     await wait(3_000);
 
     // 0:24–0:25 Send request
@@ -149,9 +110,9 @@ async function main() {
     console.log(`[record-demo] Memory-ON recall chips: ${onChips} (must be > 0)`);
     expect(onChips, "memory ON must produce recall chips — else the selector is wrong").toBeGreaterThan(0);
 
-    move(600, 430);
+    await page.mouse.move(600, 430);
     await wait(7_000);
-    move(980, 430);
+    await page.mouse.move(980, 430);
     await wait(13_000);
 
     // 0:45–0:55 Close session / distillation (was 18s hold — 10s is enough)
@@ -169,7 +130,7 @@ async function main() {
     await expect(
       page.locator('#trace-logs').getByText(/semantic fact\(s\) written|no new facts/i),
     ).toBeVisible();
-    move(985, 520);
+    await page.mouse.move(985, 520);
     await wait(10_000);
 
     // 0:55–1:03 Memory off (was 10s hold — 8s is enough)
@@ -194,9 +155,9 @@ async function main() {
     const offRecallChips = await page.locator('.recall-chip').count();
     console.log(`[record-demo] Memory-OFF recall chips: ${offRecallChips} (must be 0)`);
     expect(offRecallChips, "memory OFF must produce zero recall chips").toBe(0);
-    move(600, 430);
+    await page.mouse.move(600, 430);
     await wait(7_000);
-    move(985, 430);
+    await page.mouse.move(985, 430);
     await wait(13_000);
 
     // 1:24–1:34 Facts dashboard (was 15s — 4+6 is enough)
@@ -205,9 +166,9 @@ async function main() {
     await expect(page.getByRole("heading", { name: /semantic fact store/i })).toBeVisible({
       timeout: 15_000,
     });
-    move(350, 300);
+    await page.mouse.move(350, 300);
     await wait(4_000);
-    move(700, 500);
+    await page.mouse.move(700, 500);
     await wait(6_000);
 
     // Hold final frame (was 5s — 3s is enough)
