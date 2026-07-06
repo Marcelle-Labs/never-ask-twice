@@ -61,17 +61,20 @@ async function main() {
     headless: false,
     slowMo: 150,
     args: [
-      "--window-size=1920,1080",
-      "--force-device-scale-factor=1",
+      "--start-maximized",
       `--window-position=${WINDOW_POSITION}`,
     ],
   });
   try {
     const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 },
-      deviceScaleFactor: 1,
+      viewport: null,
     });
     const page = await context.newPage();
+
+    // Log the actual rendering dimensions so we can verify the harness
+    // matches the real browser, not a synthetic viewport.
+    const dims = await page.evaluate(() => ({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio }));
+    console.log(`[record-demo] Render dims: ${dims.w}x${dims.h} @ DPR ${dims.dpr}`);
 
     // 0:00–0:08 Landing (was 15s — title card doesn't need more)
     console.log("[record-demo] Landing page");
