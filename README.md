@@ -6,6 +6,7 @@
 
 Enterprise Support MemoryAgent on Qwen Cloud
 
+![CI](https://github.com/marcelle-labs/never-ask-twice/actions/workflows/ci.yml/badge.svg)
 ![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Runtime](https://img.shields.io/badge/Runtime-Node.js%2020-green)
@@ -39,8 +40,9 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
 |Qwen-backed live path|Done|Live on Railway with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
 |Railway deployment (primary live URL)|Done|[neverasktwice.dev](https://neverasktwice.dev) — Neon-backed, turn → close → recall cycle verified end-to-end. See [`deploy/railway.md`](deploy/railway.md).|
-|Alibaba Function Compute deployment|Blocked on Alibaba ID verification (KYC)|`s.yaml` and deployment instructions exist and are deployable in shape; not the app. Swap from Railway is a `DATABASE_URL` change. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
-|Demo video|Pending|Should use the frozen Acme scenario and the eval output line.|
+|Alibaba Function Compute deployment|Ready (pending account verification)|`s.yaml` and handler export are wired; swap from Railway is a `DATABASE_URL` change. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
+|Demo video|Done|[Watch the demo](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario with eval output.|
+|Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
 
 ## Judge path
 
@@ -61,7 +63,9 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
    pnpm mcp:list-tools
    ```
 
-7. Review deployment proof: [`deploy/railway.md`](deploy/railway.md) (live, primary) and [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (preferred target, pending Alibaba KYC).
+7. Review deployment proof: [`deploy/railway.md`](deploy/railway.md) (live, primary) and [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (secondary target, wired and ready).
+8. Read the build log: [Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit).
+9. Watch the demo: [https://youtu.be/P254DPj-Mgw](https://youtu.be/P254DPj-Mgw).
 
 ## The measurable result
 
@@ -212,7 +216,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 - `eval` — frozen three-session scenario, ground truth, expected output, and runner.
 - `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
 - `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
-- `deploy` — Railway deployment proof (live, primary) and Alibaba Function Compute deployment instructions (preferred target, pending KYC).
+- `deploy` — Railway deployment proof (live, primary) and Alibaba Function Compute deployment instructions (secondary target, wired and ready).
 
 ## Key commands
 

@@ -1,6 +1,6 @@
 # Railway Deployment
 
-Never Ask Twice's primary judge-facing deployment runs on Railway. The app is deploy-target-agnostic — `apps/api/src/db.ts` opens a plain `pg.Pool` from `DATABASE_URL`, so Railway and Alibaba Function Compute run the same `dist/` build with no code changes between them. See [`alibaba-fc.md`](alibaba-fc.md) for the FC swap-over path, which becomes the preferred target once Alibaba ID verification clears (tracked separately).
+Never Ask Twice's primary judge-facing deployment runs on Railway. The app is deploy-target-agnostic — `apps/api/src/db.ts` opens a plain `pg.Pool` from `DATABASE_URL`, so Railway and Alibaba Function Compute run the same `dist/` build with no code changes between them. See [`alibaba-fc.md`](alibaba-fc.md) for the FC swap-over path, which becomes the secondary target once Alibaba account verification clears (tracked separately).
 
 > Status: live. Build, deploy, and a full turn → close → recall cycle are verified against the hosted URL.
 
@@ -81,7 +81,7 @@ not just in the deterministic eval fixture.
 
 ## Known gaps vs. the FC path
 
-- No custom domain yet — judges click the Railway-generated `*.up.railway.app` URL.
+- Custom domain is configured (`neverasktwice.dev`); judges click the custom domain URL.
 - Cold start is not a concern on Railway (long-lived container), unlike FC.
 
 ## Troubleshooting

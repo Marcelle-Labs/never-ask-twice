@@ -26,10 +26,10 @@ flowchart TD
     Store --> DB["Neon Postgres + pgvector<br/>episodic_events · semantic_facts ·<br/>provenance · forgetting_policy"]
 
     Railway["Railway container<br/>primary, live"] -.->|"node dist/apps/api/src/server.js"| API
-    FC["Alibaba Function Compute<br/>swap-to-when-cleared"] -.->|"server.handler export"| API
+    FC["Alibaba Function Compute<br/>secondary target"] -.->|"server.handler export"| API
 ```
 
-Same code, two deploy targets, selected purely by which env vars and start command run it (`DATABASE_URL` is the only thing that changes). Railway is live today; Alibaba FC is the preferred target and is a `DATABASE_URL` swap + redeploy away once Alibaba ID verification clears. See [Deployment shape](#deployment-shape) below.
+Same code, two deploy targets, selected purely by which env vars and start command run it (`DATABASE_URL` is the only thing that changes). Railway is live today; Alibaba FC is the secondary target and is a `DATABASE_URL` swap + redeploy away once Alibaba account verification clears. See [Deployment shape](#deployment-shape) below.
 
 ## Components
 
@@ -54,7 +54,7 @@ Same code, two deploy targets, selected purely by which env vars and start comma
 
 The judge-facing deployment is **Railway**, live now: see the README Status table for the current URL. The app is deploy-target-agnostic by design — `apps/api/src/db.ts` opens a plain `pg.Pool` from `DATABASE_URL`, so switching targets is a config change, not a code change. Postgres is Neon, reached as a normal long-lived connection from Railway's single container (no pgbouncer/pooling caveat).
 
-Alibaba Cloud Function Compute remains the preferred target and is still fully wired: the root `s.yaml` points FC at `dist/apps/api/src/server.handler` (the `handler` export in `apps/api/src/server.ts`) after `pnpm build`. It is currently blocked on Alibaba ID verification, not on app readiness — swapping to it once that clears is a `DATABASE_URL` change and a redeploy. See [`deploy/railway.md`](../deploy/railway.md) for the live deployment and [`deploy/alibaba-fc.md`](../deploy/alibaba-fc.md) for the FC swap-over path.
+Alibaba Cloud Function Compute is the secondary target and is fully wired: the root `s.yaml` points FC at `dist/apps/api/src/server.handler` (the `handler` export in `apps/api/src/server.ts`) after `pnpm build`. It is pending Alibaba account verification, not on app readiness — swapping to it once that clears is a `DATABASE_URL` change and a redeploy. See [`deploy/railway.md`](../deploy/railway.md) for the live deployment and [`deploy/alibaba-fc.md`](../deploy/alibaba-fc.md) for the FC swap-over path.
 
 The live path requires:
 
