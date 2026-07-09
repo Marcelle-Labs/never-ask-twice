@@ -22,7 +22,7 @@ function jsStringEscape(input: string): string {
     .replace(/\t/g, "\\t");
 }
 
-export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean, slaTier: string | null, qwenConfigured: boolean) => `
+export const ChatView = (messages: Array<{ role: string; message: string }>, sessionId: string, memoryOn: boolean, slaTier: string | null, qwenConfigured: boolean, accountId: string, customerId: string) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,6 +107,8 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 
   <script>
     const sessionId = "${jsStringEscape(sessionId)}";
+    const accountId = "${jsStringEscape(accountId)}";
+    const customerId = "${jsStringEscape(customerId)}";
     const form = document.getElementById('chat-form');
     const input = document.getElementById('user-input');
     const thread = document.getElementById('chat-thread');
@@ -260,8 +262,8 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            accountId: 'acme_corp',
-            customerId: 'jason_99',
+            accountId,
+            customerId,
             sessionId,
             role: 'customer',
             message: msg,
@@ -305,7 +307,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         const res = await fetch(\`/sessions/\${sessionId}/close\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountId: 'acme_corp', customerId: 'jason_99' })
+          body: JSON.stringify({ accountId, customerId })
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));

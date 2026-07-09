@@ -64,6 +64,14 @@ export class InMemoryMemoryStore implements MemoryStore {
     return record;
   }
 
+  async clearWorkingFacts(sessionId: string) {
+    for (let i = this.workingFacts.length - 1; i >= 0; i--) {
+      if (this.workingFacts[i]!.sessionId === sessionId) {
+        this.workingFacts.splice(i, 1);
+      }
+    }
+  }
+
   async currentFacts(accountId: string, customerId: string, now: Date) {
     return this.semanticFacts.filter(
       (fact) =>
@@ -106,6 +114,22 @@ export class InMemoryMemoryStore implements MemoryStore {
 
   async insertSemanticFact(record: Omit<SemanticFactRecord, "factId"> & { factId?: string }) {
     const fact = { ...record, factId: record.factId ?? randomUUID() };
+    this.semanticFacts.push(fact);
+    return fact;
+  }
+
+  async upsertSeedFact(record: Omit<SemanticFactRecord, "factId"> & { factId?: string }) {
+    const fact = { ...record, factId: record.factId ?? randomUUID() };
+    const existingIdx = this.semanticFacts.findIndex(
+      (f) =>
+        f.accountId === record.accountId &&
+        f.customerId === record.customerId &&
+        f.predicate === record.predicate &&
+        f.validTo === null
+    );
+    if (existingIdx >= 0) {
+      return this.semanticFacts[existingIdx]!;
+    }
     this.semanticFacts.push(fact);
     return fact;
   }

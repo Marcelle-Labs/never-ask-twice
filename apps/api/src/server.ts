@@ -94,7 +94,7 @@ export async function seedVisitorFacts(
   const now = new Date();
   for (const fact of ACME_FIXTURE_FACTS) {
     const embedding = await qwen.embed(`${fact.subject} ${fact.predicate} ${fact.object}`);
-    await store.insertSemanticFact({
+    await store.upsertSeedFact({
       accountId,
       customerId,
       sessionId: null,

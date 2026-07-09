@@ -362,6 +362,29 @@ export class DrizzleMemoryStore implements MemoryStore {
       supersededBy: record.supersededBy ?? undefined,
       metadata: record.metadata,
       embedding: record.embedding,
+    });
+    return { ...record, factId };
+  }
+
+  async upsertSeedFact(record: Omit<SemanticFactRecord, "factId"> & { factId?: string }): Promise<SemanticFactRecord> {
+    const factId = record.factId ?? randomUUID();
+    await this.db.insert(schema.semanticFacts).values({
+      factId,
+      accountId: record.accountId,
+      customerId: record.customerId,
+      sessionId: record.sessionId ?? undefined,
+      subject: record.subject,
+      predicate: record.predicate,
+      predicateClass: record.predicateClass,
+      object: record.object,
+      confidence: record.confidence,
+      adjudicationRationale: record.adjudicationRationale ?? undefined,
+      validFrom: record.validFrom,
+      validTo: record.validTo ?? undefined,
+      expiresAt: record.expiresAt ?? undefined,
+      supersededBy: record.supersededBy ?? undefined,
+      metadata: record.metadata,
+      embedding: record.embedding,
     }).onConflictDoNothing();
     return { ...record, factId };
   }

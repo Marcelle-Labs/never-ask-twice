@@ -239,6 +239,8 @@ export class MemoryService {
       distillationStatus: "complete",
     });
 
+    await this.store.clearWorkingFacts(input.sessionId);
+
     const finalSession = (await this.store.getSession(input.sessionId))!;
     return { session: finalSession, facts: insertedFacts };
   }
