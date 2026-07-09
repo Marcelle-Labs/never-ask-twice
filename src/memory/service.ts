@@ -184,16 +184,15 @@ export class MemoryService {
         ? new Date(input.closedAt.getTime() + candidate.ttlDays * 24 * 3_600_000)
         : null;
 
-      // Pre-generate the factId so we can supersede existing facts before
-      // inserting the new one. With the unique index on
-      // (account_id, customer_id, predicate) WHERE valid_to IS NULL, inserting
-      // before superseding would violate the constraint in Postgres.
       const newFactId = randomUUID();
 
+      // First mark existing facts as superseded (validTo) so the unique partial
+      // index on (account_id, customer_id, predicate) WHERE valid_to IS NULL
+      // frees up. Do not set supersededBy yet; the new fact does not exist and
+      // semantic_facts.superseded_by is a self-referencing FK.
       for (const fact of current) {
         await this.store.updateSemanticFact(fact.factId, {
           validTo: input.closedAt,
-          supersededBy: newFactId,
         });
       }
 
@@ -215,6 +214,13 @@ export class MemoryService {
         metadata: candidate.metadata,
         embedding,
       });
+
+      // Now that the new fact exists, point the old facts to it.
+      for (const fact of current) {
+        await this.store.updateSemanticFact(fact.factId, {
+          supersededBy: newFact.factId,
+        });
+      }
 
       // Session-level provenance: link each new fact to all events in this session.
       // Per-event attribution would require distillation to return source event IDs (deferred).
