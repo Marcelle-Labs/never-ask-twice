@@ -4,8 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
+import { getCookie, setCookie } from "hono/cookie";
 import { logger } from "hono/logger";
 import { z } from "zod";
 
@@ -13,6 +14,7 @@ import type { QwenClient } from "../../../src/qwen/qwenClient.js";
 import { createQwenClient } from "../../../src/qwen/qwenClient.js";
 import { MEMORY_EMBEDDING_DIM } from "../../../src/contracts.js";
 import { MemoryService, SessionNotFoundError } from "../../../src/memory/service.js";
+import type { MemoryStore } from "../../../src/memory/types.js";
 import { runSupportTurn } from "../../../src/agent/supportAgent.js";
 import { getDb } from "./db.js";
 import { DrizzleMemoryStore } from "./drizzleStore.js";
@@ -69,21 +71,81 @@ function capabilityStatus() {
 }
 
 // ---------------------------------------------------------------------------
-// App bootstrap
+// Per-visitor tenant scoping
 // ---------------------------------------------------------------------------
-const db = getDb();
-const store = new DrizzleMemoryStore(db);
-const qwen = buildQwenClient();
-const memory = new MemoryService(store, qwen);
+const VISITOR_COOKIE = "nat_visitor";
 
-const app = new Hono();
-app.use("*", logger());
-app.use("*", cors());
+const ACME_FIXTURE_FACTS = [
+  { subject: "Acme Robotics", predicate: "sla_tier", predicateClass: "contract", object: "gold", confidence: 0.95 },
+  { subject: "Acme Robotics", predicate: "product_config", predicateClass: "configuration", object: "requires SSO", confidence: 0.95 },
+  { subject: "Acme Robotics", predicate: "integration", predicateClass: "relationship", object: "Salesforce", confidence: 0.95 },
+  { subject: "Acme Robotics", predicate: "escalation_contact", predicateClass: "relationship", object: "Priya", confidence: 0.95 },
+] as const;
+
+export async function seedVisitorFacts(
+  store: MemoryStore,
+  qwen: QwenClient,
+  accountId: string,
+  customerId: string,
+) {
+  const existing = await store.currentFacts(accountId, customerId, new Date());
+  if (existing.length > 0) return;
+
+  const now = new Date();
+  for (const fact of ACME_FIXTURE_FACTS) {
+    const embedding = await qwen.embed(`${fact.subject} ${fact.predicate} ${fact.object}`);
+    await store.insertSemanticFact({
+      accountId,
+      customerId,
+      sessionId: null,
+      subject: fact.subject,
+      predicate: fact.predicate,
+      predicateClass: fact.predicateClass,
+      object: fact.object,
+      confidence: fact.confidence,
+      adjudicationRationale: null,
+      validFrom: now,
+      validTo: null,
+      expiresAt: null,
+      supersededBy: null,
+      metadata: {},
+      embedding,
+    });
+  }
+}
+
+function getOrCreateVisitor(c: Context): {
+  accountId: string;
+  customerId: string;
+  isNew: boolean;
+} {
+  const existing = getCookie(c, VISITOR_COOKIE);
+  if (existing) {
+    return { accountId: `visitor_${existing}`, customerId: `visitor_${existing}`, isNew: false };
+  }
+  const newId = randomUUID();
+  setCookie(c, VISITOR_COOKIE, newId, {
+    httpOnly: true,
+    sameSite: "Lax",
+    maxAge: 60 * 60 * 24 * 365,
+    path: "/",
+  });
+  return { accountId: `visitor_${newId}`, customerId: `visitor_${newId}`, isNew: true };
+}
+
+// ---------------------------------------------------------------------------
+// App factory — injectable for tests
+// ---------------------------------------------------------------------------
+export function createApp(deps: { store: MemoryStore; memory: MemoryService; qwen: QwenClient }) {
+  const { store, memory, qwen } = deps;
+  const app = new Hono();
+  app.use("*", logger());
+  app.use("*", cors());
 
 // ---------------------------------------------------------------------------
 // GET /health
 // ---------------------------------------------------------------------------
-app.get("/health", (c) => c.json(capabilityStatus(), 200));
+  app.get("/health", (c) => c.json(capabilityStatus(), 200));
 
 app.get("/favicon.svg", (c) => c.text(brandFaviconSvg, 200, {
   "Cache-Control": "public, max-age=31536000, immutable",
@@ -371,6 +433,50 @@ app.post("/recall", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /recall?sessionId=...
+// Returns recall bundle for the visitor's session. If sessionId doesn't exist
+// or doesn't belong to the caller's tenant, returns an empty bundle — never
+// returns facts for a non-existent session.
+// ---------------------------------------------------------------------------
+app.get("/recall", async (c) => {
+  const sessionId = c.req.query("sessionId");
+  if (!sessionId || sessionId.trim().length === 0) {
+    return c.json({ ok: true, bundle: [], usedTokens: 0, dropList: [] }, 200);
+  }
+
+  const { accountId, customerId } = getOrCreateVisitor(c);
+  const session = await store.getSession(sessionId);
+  if (!session || session.accountId !== accountId || session.customerId !== customerId) {
+    return c.json({ ok: true, bundle: [], usedTokens: 0, dropList: [] }, 200);
+  }
+
+  const query = c.req.query("query") ?? "general";
+  const envBudget = Number(process.env.MEMORY_TOKEN_BUDGET ?? 1200);
+  const tokenBudget = Number.isNaN(envBudget) || envBudget <= 0 ? 1200 : envBudget;
+  const now = new Date();
+
+  try {
+    const result = await memory.recall({ accountId, customerId, sessionId, query, tokenBudget, now });
+    return c.json(
+      {
+        ok: true,
+        bundle: result.bundle.map((item) => ({
+          kind: item.kind,
+          score: item.score,
+          summary: item.summary,
+        })),
+        usedTokens: result.usedTokens,
+        dropList: result.dropList,
+      },
+      200,
+    );
+  } catch (err) {
+    console.error("[recall] Failed to recall:", err);
+    return c.json({ error: "Failed to recall" }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // HTML UI Routes
 // ---------------------------------------------------------------------------
 
@@ -436,20 +542,22 @@ app.get("/static/brand/:file", (c) => {
   }
 });
 
-app.get("/chat", async (c) => {
+  app.get("/chat", async (c) => {
   const querySessionId = c.req.query("sessionId");
   const sessionId = querySessionId && querySessionId.trim().length > 0 ? querySessionId.trim() : randomUUID();
   const memoryOn = c.req.query("memory") !== "off";
   const { qwenConfigured } = capabilityStatus();
 
   try {
-    await memory.createSession({ accountId: "acme_corp", customerId: "jason_99", sessionId });
+    const { accountId, customerId } = getOrCreateVisitor(c);
+    await memory.createSession({ accountId, customerId, sessionId });
+    await seedVisitorFacts(store, qwen, accountId, customerId);
     const events = await store.getEvents(sessionId);
     const messages = events.map((e) => ({ role: e.role, message: e.message }));
-    const facts = await store.currentFacts("acme_corp", "jason_99", new Date());
+    const facts = await store.currentFacts(accountId, customerId, new Date());
     const slaFact = facts.find((f) => f.predicate === "sla_tier");
     const slaTier = slaFact ? slaFact.object : null;
-    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured), 200, {
+    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured, accountId, customerId), 200, {
       "Cache-Control": "no-store",
     });
   } catch (err) {
@@ -480,15 +588,29 @@ app.get("/eval-snapshot", async (c) => {
   }, 200);
 });
 
-app.get("/facts", async (c) => {
-  const accountId = c.req.query("accountId") ?? "acme_corp";
-  const customerId = c.req.query("customerId") ?? "jason_99";
+  app.get("/facts", async (c) => {
+  const queryAccountId = c.req.query("accountId");
+  const queryCustomerId = c.req.query("customerId");
+  let accountId: string;
+  let customerId: string;
+  if (queryAccountId && queryCustomerId) {
+    accountId = queryAccountId;
+    customerId = queryCustomerId;
+  } else {
+    const visitor = getOrCreateVisitor(c);
+    accountId = visitor.accountId;
+    customerId = visitor.customerId;
+    await seedVisitorFacts(store, qwen, accountId, customerId);
+  }
   const facts = await store.currentFacts(accountId, customerId, new Date());
   const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
   const memOnReaskRate = missing.length > 0 ? 1.0 : 0.0;
   return c.html(FactsView(facts, memOnReaskRate), 200, { "Cache-Control": "no-store" });
 });
+
+  return app;
+}
 
 // ---------------------------------------------------------------------------
 // Function Compute handler
@@ -542,7 +664,7 @@ export async function handler(event: FcEvent, context: unknown) {
     body,
   });
 
-  const response = await app.fetch(request, context);
+  const response = await bootstrapApp.fetch(request, context);
 
   const responseHeaders: Record<string, string> = {};
   response.headers.forEach((value, key) => {
@@ -584,10 +706,23 @@ function isMainModule() {
   return entry.endsWith("/server.ts") || entry.endsWith("\\server.ts") || entry.endsWith("/server.js") || entry.endsWith("\\server.js");
 }
 
+// ---------------------------------------------------------------------------
+// Module-level bootstrap (guarded — tests only need createApp)
+// ---------------------------------------------------------------------------
+const bootstrapApp = process.env.DATABASE_URL
+  ? (() => {
+      const db = getDb();
+      const store = new DrizzleMemoryStore(db);
+      const qwen = buildQwenClient();
+      const memory = new MemoryService(store, qwen);
+      return createApp({ store, memory, qwen });
+    })()
+  : new Hono();
+
 if (isMainModule()) {
   const port = Number(process.env.PORT ?? 3000);
   console.log(`[never-ask-twice] API listening on http://localhost:${port}`);
-  serve({ fetch: app.fetch, port });
+  serve({ fetch: bootstrapApp.fetch, port });
 }
 
-export default app;
+export default bootstrapApp;

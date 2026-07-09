@@ -15,9 +15,12 @@ import type {
 
 type Db = NodePgDatabase<typeof schema>;
 
+const MAX_CACHE_SESSIONS = 500;
+
 export class DrizzleMemoryStore implements MemoryStore {
-  // In-memory working-facts store (working facts are ephemeral to the session)
-  private readonly workingFactsCache: WorkingMemoryRecord[] = [];
+  // In-memory working-facts store keyed by sessionId for O(1) eviction.
+  // Bounded by MAX_CACHE_SESSIONS with FIFO overflow eviction.
+  private readonly workingFactsCache = new Map<string, WorkingMemoryRecord[]>();
 
   constructor(private readonly db: Db) {}
 
@@ -146,8 +149,34 @@ export class DrizzleMemoryStore implements MemoryStore {
   }
 
   async rememberWorkingFact(record: WorkingMemoryRecord): Promise<WorkingMemoryRecord> {
-    this.workingFactsCache.push(record);
+    const list = this.workingFactsCache.get(record.sessionId);
+    if (list) {
+      list.push(record);
+    } else {
+      this.workingFactsCache.set(record.sessionId, [record]);
+      // Enforce bound: evict oldest session entry if over limit.
+      // Skip sessions that are still open (live) — only evict closed/unknown ones.
+      if (this.workingFactsCache.size > MAX_CACHE_SESSIONS) {
+        await this.evictStaleSession();
+      }
+    }
     return record;
+  }
+
+  private async evictStaleSession(): Promise<void> {
+    for (const key of this.workingFactsCache.keys()) {
+      const rows = await this.db
+        .select({ closedAt: schema.sessions.closedAt, status: schema.sessions.distillationStatus })
+        .from(schema.sessions)
+        .where(eq(schema.sessions.sessionId, key))
+        .limit(1);
+      const row = rows[0];
+      // Evict if session is closed, distilled, or not found in DB (stale)
+      if (!row || row.closedAt !== null || row.status === "complete") {
+        this.workingFactsCache.delete(key);
+        return;
+      }
+    }
   }
 
   async currentWorkingFacts(
@@ -155,12 +184,21 @@ export class DrizzleMemoryStore implements MemoryStore {
     customerId: string,
     sessionId?: string
   ): Promise<WorkingMemoryRecord[]> {
-    return this.workingFactsCache.filter(
-      (f) =>
-        f.accountId === accountId &&
-        f.customerId === customerId &&
-        (sessionId === undefined || f.sessionId === sessionId)
-    );
+    if (sessionId !== undefined) {
+      const list = this.workingFactsCache.get(sessionId);
+      if (!list) return [];
+      return list.filter(
+        (f) => f.accountId === accountId && f.customerId === customerId
+      );
+    }
+    // No sessionId filter — scan all cached sessions
+    const result: WorkingMemoryRecord[] = [];
+    for (const list of this.workingFactsCache.values()) {
+      result.push(...list.filter(
+        (f) => f.accountId === accountId && f.customerId === customerId
+      ));
+    }
+    return result;
   }
 
   async currentFacts(accountId: string, customerId: string, now: Date): Promise<SemanticFactRecord[]> {
@@ -324,7 +362,7 @@ export class DrizzleMemoryStore implements MemoryStore {
       supersededBy: record.supersededBy ?? undefined,
       metadata: record.metadata,
       embedding: record.embedding,
-    });
+    }).onConflictDoNothing();
     return { ...record, factId };
   }
 
@@ -345,5 +383,9 @@ export class DrizzleMemoryStore implements MemoryStore {
         rationale: record.rationale ?? undefined,
       })
       .onConflictDoNothing();
+  }
+
+  async clearWorkingFacts(sessionId: string): Promise<void> {
+    this.workingFactsCache.delete(sessionId);
   }
 }
