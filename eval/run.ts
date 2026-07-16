@@ -12,7 +12,6 @@ type AgentEvalResult = {
   mode: "on" | "off";
   reAskRate: number;
   recallAccuracy: number;
-  hallucinationCount: number;
 };
 
 // ─── Scenario 1: basic-recall (Acme Robotics) ────────────────────────────────
@@ -104,7 +103,6 @@ async function runScenario1(mode: "on" | "off"): Promise<AgentEvalResult> {
     mode,
     reAskRate: agentTurn.askedForMissingFacts ? 1 : 0,
     recallAccuracy: citedExpected.length / expectedFacts.length,
-    hallucinationCount: agentTurn.hallucinatedFacts.length,
   };
 }
 
@@ -198,6 +196,8 @@ async function runScenario3(): Promise<{ expiredFactGone: boolean }> {
 function assertScenario1(on: AgentEvalResult, off: AgentEvalResult) {
   if (on.reAskRate !== 0) throw new Error("scenario:basic-recall memory-on regressed: re-asked for known facts");
   if (off.reAskRate !== 1) throw new Error("scenario:basic-recall memory-off baseline broken: did not ask for missing facts");
+  if (on.recallAccuracy !== 1) throw new Error(`scenario:basic-recall memory-on regressed: recall accuracy ${on.recallAccuracy.toFixed(2)}, expected 1.00`);
+  if (off.recallAccuracy !== 0) throw new Error(`scenario:basic-recall memory-off baseline broken: recall accuracy ${off.recallAccuracy.toFixed(2)}, expected 0.00`);
   if (expectedOutput.managerSummaryLine !== "re-ask rate: 0.00 (memory) vs 1.00 (no-memory)") {
     throw new Error("expected-output.json fixture changed unexpectedly");
   }
@@ -232,10 +232,8 @@ async function main() {
   console.log("=== scenario:basic-recall ===");
   console.log(`memory-on  re-ask rate:      ${onResult.reAskRate.toFixed(2)}`);
   console.log(`memory-on  recall accuracy:  ${onResult.recallAccuracy.toFixed(2)}`);
-  console.log(`memory-on  hallucinations:   ${onResult.hallucinationCount}`);
   console.log(`memory-off re-ask rate:      ${offResult.reAskRate.toFixed(2)}`);
   console.log(`memory-off recall accuracy:  ${offResult.recallAccuracy.toFixed(2)}`);
-  console.log(`memory-off hallucinations:   ${offResult.hallucinationCount}`);
   console.log(combinedLine);
 
   console.log("=== scenario:globex-preference-change ===");
@@ -248,7 +246,7 @@ async function main() {
   console.log(`ttl-forgetting:        ${s3.expiredFactGone ? "PASS" : "FAIL"}`);
 
   console.log("=== aggregate ===");
-  console.log(`re-ask ON: ${onResult.reAskRate.toFixed(2)} | re-ask OFF: ${offResult.reAskRate.toFixed(2)} | recall accuracy: ${onResult.recallAccuracy.toFixed(2)} | hallucinations: ${onResult.hallucinationCount} | supersession: PASS | ttl-forgetting: PASS`);
+  console.log(`re-ask ON: ${onResult.reAskRate.toFixed(2)} | re-ask OFF: ${offResult.reAskRate.toFixed(2)} | recall accuracy: ${onResult.recallAccuracy.toFixed(2)} | supersession: PASS | ttl-forgetting: PASS`);
 }
 
 main().catch((error) => {

@@ -58,10 +58,8 @@ The fake Qwen client is intentional. It keeps judgments reproducible without req
 === Scenario 1: Basic Recall (Acme Corp) ===
 memory-on re-ask rate: 0.00
 memory-on recall accuracy: 1.00
-memory-on hallucination count: 0
 memory-off re-ask rate: 1.00
 memory-off recall accuracy: 0.00
-memory-off hallucination count: 0
 re-ask rate: 0.00 (memory) vs 1.00 (no-memory)
 ✓ Scenario 1 passed
 

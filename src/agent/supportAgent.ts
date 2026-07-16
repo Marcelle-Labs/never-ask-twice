@@ -101,7 +101,6 @@ export interface AgentResponse {
   answer: string;
   askedForMissingFacts: boolean;
   citedFacts: CitedFact[];
-  hallucinatedFacts: string[];
 }
 
 export async function runSupportTurn(input: {
@@ -158,7 +157,6 @@ export async function runSupportTurn(input: {
       answer: humanMissingQuestion(missingPredicates, variant),
       askedForMissingFacts: true,
       citedFacts: facts,
-      hallucinatedFacts: [],
     } satisfies AgentResponse;
   }
 
@@ -184,6 +182,5 @@ export async function runSupportTurn(input: {
     answer,
     askedForMissingFacts: false,
     citedFacts: facts,
-    hallucinatedFacts: [],
   } satisfies AgentResponse;
 }

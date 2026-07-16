@@ -35,7 +35,7 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |---|---|---|
 |Public clean-room repo|Done|Synthetic data only; boundary scan included.|
 |Local Postgres + pgvector setup|Done|`docker compose up -d` binds Postgres on `localhost:5433`.|
-|Deterministic eval harness|Done|`pnpm eval` prints memory ON/OFF re-ask, recall, and hallucination metrics.|
+|Deterministic eval harness|Done|`pnpm eval` prints memory ON/OFF re-ask and recall metrics.|
 |Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
 |Qwen-backed live path|Done|Live on Railway with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
@@ -80,10 +80,8 @@ Expected deterministic fixture output:
 ```text
 memory-on re-ask rate: 0.00
 memory-on recall accuracy: 1.00
-memory-on hallucination count: 0
 memory-off re-ask rate: 1.00
 memory-off recall accuracy: 0.00
-memory-off hallucination count: 0
 re-ask rate: 0.00 (memory) vs 1.00 (no-memory)
 ```
 

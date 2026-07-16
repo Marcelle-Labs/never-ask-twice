@@ -21,7 +21,7 @@ test.describe("Never Ask Twice — live demo preflight", () => {
   });
 
   test("seed — ensure semantic facts exist for demo account", async ({ page }) => {
-    const snap = await (await page.request.get(`${BASE_URL}/eval-snapshot`)).json();
+    const snap = await (await page.request.get(`${BASE_URL}/eval-snapshot?tenant=eval-fixture`)).json();
     if (snap.factsCount > 0 && snap.missingPredicates.length === 0) {
       test.skip(true, "Facts already seeded — skipping seed step");
       return;
@@ -46,7 +46,7 @@ test.describe("Never Ask Twice — live demo preflight", () => {
     const closeBody = await closeRes.json();
     expect(closeBody.distillationStatus).toBe("complete");
 
-    const verify = await (await page.request.get(`${BASE_URL}/eval-snapshot`)).json();
+    const verify = await (await page.request.get(`${BASE_URL}/eval-snapshot?tenant=eval-fixture`)).json();
     expect(verify.missingPredicates.length).toBe(0);
     expect(verify.memoryOnReaskRate).toBe(0);
   });

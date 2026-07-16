@@ -12,7 +12,7 @@ const CUSTOMER_ID = "jason_99";
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function ensureSeeded() {
-  const res = await fetch(`${BASE_URL}/eval-snapshot`);
+  const res = await fetch(`${BASE_URL}/eval-snapshot?tenant=eval-fixture`);
   if (!res.ok) throw new Error(`eval-snapshot failed: HTTP ${res.status}`);
   const snap = await res.json();
   if (snap.factsCount > 0 && snap.missingPredicates.length === 0) return;
@@ -44,7 +44,7 @@ async function ensureSeeded() {
   // guarantee the semantic facts are written yet. Poll until they're present
   // so we never start filming with an empty memory store.
   for (let i = 0; i < 20; i++) {
-    const s = await (await fetch(`${BASE_URL}/eval-snapshot`)).json();
+    const s = await (await fetch(`${BASE_URL}/eval-snapshot?tenant=eval-fixture`)).json();
     if (s.factsCount > 0 && s.missingPredicates.length === 0) {
       console.log(`[record-demo] Facts confirmed (${s.factsCount} facts, 0 missing) after ${i + 1}s`);
       return;

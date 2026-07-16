@@ -135,4 +135,43 @@ describe("tenant-isolation-http", () => {
       ["escalation_contact", "integration", "product_config", "sla_tier"].sort(),
     );
   });
+
+  it("scopes eval snapshot and facts dashboard to the visitor cookie", async () => {
+    const { app } = makeApp();
+
+    const first = await app.fetch(new Request("http://localhost/eval-snapshot"));
+    const firstVisitor = parseVisitorCookie(first.headers.get("set-cookie"))!;
+    const firstBody = await first.json();
+    expect(firstBody.accountId).toBe(`visitor_${firstVisitor}`);
+    expect(firstBody.customerId).toBe(`visitor_${firstVisitor}`);
+    expect(firstBody.factsCount).toBe(4);
+
+    const second = await app.fetch(new Request("http://localhost/eval-snapshot"));
+    const secondVisitor = parseVisitorCookie(second.headers.get("set-cookie"))!;
+    const secondBody = await second.json();
+    expect(secondBody.accountId).toBe(`visitor_${secondVisitor}`);
+    expect(secondBody.accountId).not.toBe(firstBody.accountId);
+
+    const facts = await app.fetch(
+      new Request("http://localhost/facts", {
+        headers: { Cookie: `nat_visitor=${firstVisitor}` },
+      }),
+    );
+    expect(facts.status).toBe(200);
+    expect(await facts.text()).toContain("Priya");
+  });
+
+  it("keeps the recording harness on an explicit eval fixture tenant", async () => {
+    const { app, store, qwen } = makeApp();
+    await qwen.embed("seed");
+
+    const response = await app.fetch(
+      new Request("http://localhost/eval-snapshot?tenant=eval-fixture"),
+    );
+    const body = await response.json();
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(body.accountId).toBe("acme_corp");
+    expect(body.customerId).toBe("jason_99");
+    expect(await store.currentFacts("acme_corp", "jason_99", new Date())).toHaveLength(0);
+  });
 });

@@ -569,13 +569,28 @@ app.get("/static/brand/:file", (c) => {
 // ---------------------------------------------------------------------------
 // GET /eval-snapshot
 // Returns live re-ask rates derived from current semantic fact store.
-// Deterministic: no test sessions created, no Qwen calls.
+// Deterministic and read-only for ?tenant=eval-fixture. For a cookieless
+// caller it mints a per-visitor tenant and seeds facts (Qwen embeds + DB
+// writes) via resolveDashboardTenant -> seedVisitorFacts.
 // ---------------------------------------------------------------------------
 const REQUIRED_PREDICATES = ["sla_tier", "product_config", "integration", "escalation_contact"];
+const EVAL_FIXTURE_TENANT = {
+  accountId: "acme_corp",
+  customerId: "jason_99",
+} as const;
+
+async function resolveDashboardTenant(c: Context, store: MemoryStore, qwen: QwenClient) {
+  if (c.req.query("tenant") === "eval-fixture") {
+    return EVAL_FIXTURE_TENANT;
+  }
+
+  const visitor = getOrCreateVisitor(c);
+  await seedVisitorFacts(store, qwen, visitor.accountId, visitor.customerId);
+  return { accountId: visitor.accountId, customerId: visitor.customerId };
+}
 
 app.get("/eval-snapshot", async (c) => {
-  const accountId = "acme_corp";
-  const customerId = "jason_99";
+  const { accountId, customerId } = await resolveDashboardTenant(c, store, qwen);
   const facts = await store.currentFacts(accountId, customerId, new Date());
   const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
@@ -585,23 +600,13 @@ app.get("/eval-snapshot", async (c) => {
     memoryOffReaskRate: 1.0,
     factsCount: facts.length,
     missingPredicates: missing,
+    accountId,
+    customerId,
   }, 200);
 });
 
   app.get("/facts", async (c) => {
-  const queryAccountId = c.req.query("accountId");
-  const queryCustomerId = c.req.query("customerId");
-  let accountId: string;
-  let customerId: string;
-  if (queryAccountId && queryCustomerId) {
-    accountId = queryAccountId;
-    customerId = queryCustomerId;
-  } else {
-    const visitor = getOrCreateVisitor(c);
-    accountId = visitor.accountId;
-    customerId = visitor.customerId;
-    await seedVisitorFacts(store, qwen, accountId, customerId);
-  }
+  const { accountId, customerId } = await resolveDashboardTenant(c, store, qwen);
   const facts = await store.currentFacts(accountId, customerId, new Date());
   const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
