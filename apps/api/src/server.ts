@@ -619,22 +619,52 @@ app.get("/eval-snapshot", async (c) => {
 
 // ---------------------------------------------------------------------------
 // Function Compute handler
+//
+// FC3's Node.js runtime invokes this as handler(event, context) where `event`
+// is a raw Buffer (NOT a parsed object) containing an API-Gateway-v1-style
+// JSON payload: { rawPath, headers, queryParameters, body, isBase64Encoded,
+// requestContext: { http: { method, path, ... } } }. Confirmed empirically
+// against a live deployment (2026-07-16) — Alibaba's public docs did not
+// resolve, and the previous version of this handler assumed a
+// pre-parsed object with `path`/`httpMethod`/`queryString` fields that do
+// not exist in the real payload, so every request silently fell through to
+// the "/" default path.
 // ---------------------------------------------------------------------------
-interface FcEvent {
-  path?: string;
-  url?: string;
-  httpMethod?: string;
-  method?: string;
+interface FcHttpEvent {
+  version?: string;
+  rawPath?: string;
   headers?: Record<string, string | string[] | undefined>;
-  queryString?: Record<string, string | string[] | undefined>;
-  queryStringParameters?: Record<string, string | string[] | undefined>;
+  queryParameters?: Record<string, string | string[] | undefined>;
   body?: string;
   isBase64Encoded?: boolean;
+  requestContext?: {
+    http?: {
+      method?: string;
+      path?: string;
+    };
+  };
 }
 
-export async function handler(event: FcEvent, context: unknown) {
-  const path = event.path ?? event.url ?? "/";
-  const query = event.queryString ?? event.queryStringParameters ?? {};
+function parseFcEvent(event: unknown): FcHttpEvent {
+  try {
+    if (Buffer.isBuffer(event)) {
+      return JSON.parse(event.toString("utf8")) as FcHttpEvent;
+    }
+    if (typeof event === "string") {
+      return JSON.parse(event) as FcHttpEvent;
+    }
+  } catch (err) {
+    console.error("[fc-handler] Failed to parse event payload:", err);
+    return {};
+  }
+  return (event ?? {}) as FcHttpEvent;
+}
+
+export async function handler(rawEvent: unknown, context: unknown) {
+  const event = parseFcEvent(rawEvent);
+  const path = event.rawPath ?? event.requestContext?.http?.path ?? "/";
+  const method = event.requestContext?.http?.method ?? "GET";
+  const query = event.queryParameters ?? {};
   const queryPairs = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null) continue;
@@ -657,24 +687,35 @@ export async function handler(event: FcEvent, context: unknown) {
     }
   }
 
-  const body = event.body
+  const hasBody = !["GET", "HEAD"].includes(method.toUpperCase()) && Boolean(event.body);
+  const body = hasBody
     ? event.isBase64Encoded
-      ? Buffer.from(event.body, "base64")
-      : event.body
+      ? Buffer.from(event.body as string, "base64")
+      : (event.body as string)
     : null;
 
   const request = new Request(url, {
-    method: event.httpMethod ?? event.method ?? "GET",
+    method,
     headers,
     body,
   });
 
   const response = await bootstrapApp.fetch(request, context);
 
-  const responseHeaders: Record<string, string> = {};
+  // response.headers.forEach + plain object assignment would silently drop
+  // all but the last Set-Cookie header if a response ever sets more than
+  // one — getSetCookie() is the only correct way to read multiple values.
+  const responseHeaders: Record<string, string | string[]> = {};
   response.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") return;
     responseHeaders[key] = value;
   });
+  const setCookies = response.headers.getSetCookie?.() ?? [];
+  if (setCookies.length === 1) {
+    responseHeaders["set-cookie"] = setCookies[0];
+  } else if (setCookies.length > 1) {
+    responseHeaders["set-cookie"] = setCookies;
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
   const isTextLike =

@@ -79,14 +79,53 @@ curl -X POST "$FC_URL/recall" \
 
 ## Proof block for final submission
 
-Do not treat this file as deployment proof until this section is filled in.
-
 ```text
-FC URL: <paste live URL>
-Verified at: <timestamp>
-/health: <paste successful qwen-live response>
-Qwen-backed request evidence: <paste redacted curl response or screenshot reference>
+FC URL: https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run
+Verified at: 2026-07-16 (deploy `s deploy -y`, region us-east-1)
+
+/health: {"ok":true,"qwenConfigured":true,"databaseConfigured":true,"mode":"qwen-live"}
+
+Routing sanity: GET / serves the landing page, GET /health serves the JSON
+above, GET /nonexistent-xyz returns 404 — confirms real per-path routing,
+not a coincidental match.
+
+Full round trip against the live FC URL, real Neon-over-wire DB, real Qwen:
+
+POST /turn (new session, sets 4 facts via the seed message):
+  -> 201 {"ok":true,"sessionId":"fc-verify2-sess", ...}
+
+POST /sessions/fc-verify2-sess/close:
+  -> {"ok":true,"sessionId":"fc-verify2-sess","factsDistilled":4,"distillationStatus":"complete"}
+
+POST /recall (brand-new session, same account/customer):
+  -> {"ok":true,"bundle":[
+       {"kind":"semantic","summary":"customer escalation_contact Priya"},
+       {"kind":"semantic","summary":"customer integration Salesforce"},
+       {"kind":"semantic","summary":"customer product_config SSO"},
+       {"kind":"semantic","summary":"customer sla_tier gold"},
+       ...episodic entries...
+     ],"usedTokens":117,"dropList":[]}
+
+Tenant isolation (HAC-73) carries over to FC — verified live:
+  GET /eval-snapshot?tenant=eval-fixture -> accountId acme_corp, customerId jason_99
+  GET /eval-snapshot (cookie-less, x2) -> two distinct visitor_* accountIds
 ```
+
+### Bug found and fixed during this verification
+
+The handler previously assumed `event` arrived as an already-parsed object
+with `event.path`/`event.httpMethod`/`event.queryString` fields. It does
+not — FC3's Node.js 20 runtime invokes `handler(event, context)` with
+`event` as a raw `Buffer` containing a JSON payload shaped like
+`{ rawPath, headers, queryParameters, body, isBase64Encoded, requestContext:
+{ http: { method, path, ... } } }` (confirmed empirically by temporarily
+echoing the raw event back over HTTP — Alibaba's public docs did not
+resolve a usable page for this). Every request silently fell through to
+the "/" default path regardless of what was actually requested — the
+first deploy after Alibaba account activation served the landing page for
+`/health`, `/turn`, and every other route. Fixed in `apps/api/src/server.ts`
+(`parseFcEvent()` + corrected field names); re-verified against the
+round trip above after the fix.
 
 ## Handler entry point
 
