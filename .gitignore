@@ -15,3 +15,10 @@ playwright-report/
 # Private design/research docs — stay local, never push
 docs/B2B support agent memory design/
 docs/*.pdf
+
+# Generated narration audio/manifests — regenerable, may contain voice ID
+demo/narration/output/
+
+# Recorded/rendered video — large binaries, regenerable, uploaded to
+# YouTube/Vimeo directly rather than tracked in the repo
+demo/output/

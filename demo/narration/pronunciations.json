@@ -1,0 +1,12 @@
+{
+  "method": "narration-safe substitutions",
+  "note": "The displayed script preserves product spelling. scenes.json's `text` field is the exact spoken/captioned wording with these substitutions already applied. This avoids a server-side pronunciation-dictionary ID in version control.",
+  "entries": [
+    { "display": "SLA", "spoken": "S L A" },
+    { "display": "SSO", "spoken": "S S O" },
+    { "display": "0.00", "spoken": "zero point zero zero" },
+    { "display": "1.00", "spoken": "one point zero zero" },
+    { "display": "github.com/Marcelle-Labs/never-ask-twice", "spoken": "Github dot com slash Marcelle Labs slash never dash ask dash twice" },
+    { "display": "neverasktwice.dev", "spoken": "never ask twice dot dev" }
+  ]
+}

@@ -1,7 +1,11 @@
 import { chromium, expect } from "@playwright/test";
+import { mkdir, rename } from "node:fs/promises";
+import { resolve } from "node:path";
 
 const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
 const WINDOW_POSITION = process.env.DEMO_WINDOW_POSITION ?? "0,0";
+const VIDEO_DIR = resolve(process.cwd(), "demo/output");
+const VIDEO_SIZE = { width: 1920, height: 1080 };
 const DEMO_PROMPT = "the integration is failing again, can you route this";
 const SETUP_MESSAGE =
   "We're Acme Robotics. Our SLA tier is gold, our product config requires SSO, the failing integration is Salesforce, and our escalation contact is Priya.";
@@ -56,6 +60,7 @@ async function ensureSeeded() {
 
 async function main() {
   await ensureSeeded();
+  await mkdir(VIDEO_DIR, { recursive: true });
 
   const browser = await chromium.launch({
     headless: false,
@@ -68,6 +73,12 @@ async function main() {
   try {
     const context = await browser.newContext({
       viewport: null,
+      // Playwright records the page's rendered frames directly — not a
+      // screen/window capture — so this is deterministic regardless of the
+      // OS window manager or an external screen recorder. Size is explicit
+      // because viewport is null (native window); otherwise Playwright
+      // scales down to fit 800x800.
+      recordVideo: { dir: VIDEO_DIR, size: VIDEO_SIZE },
     });
     const page = await context.newPage();
 
@@ -182,6 +193,19 @@ async function main() {
     // Hold final frame (was 5s — 3s is enough)
     console.log("[record-demo] Holding final frame");
     await wait(3_000);
+
+    const video = page.video();
+    await context.close();
+    // Video capture is this script's sole deliverable — a missing video must
+    // fail the run, not warn-and-exit-0. Warn-and-continue would let a stale
+    // capture.webm from a prior run silently pass as fresh output.
+    if (!video) {
+      throw new Error("recordVideo produced no video — capture failed");
+    }
+    const rawPath = await video.path();
+    const finalPath = resolve(VIDEO_DIR, "capture.webm");
+    await rename(rawPath, finalPath);
+    console.log(`[record-demo] Video saved: ${finalPath}`);
   } finally {
     await browser.close();
   }

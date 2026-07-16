@@ -1,0 +1,42 @@
+[
+  {
+    "id": "01-problem",
+    "targetStartMs": 0,
+    "targetDurationMs": 16000,
+    "postRollMs": 0,
+    "text": "Stop making your customers repeat themselves. Every returning customer forced to re-explain their setup is a tax on support that doesn't remember. This is Never Ask Twice: a support agent that remembers a customer across sessions.",
+    "displayText": "Stop making your customers repeat themselves. Every returning customer forced to re-explain their setup is a tax on support that doesn't remember. This is Never Ask Twice: a support agent that remembers a customer across sessions.",
+    "visual": "Landing page hero, then entering the live chat demo",
+    "status": "ready"
+  },
+  {
+    "id": "02-memory-on",
+    "targetStartMs": 16000,
+    "targetDurationMs": 39000,
+    "postRollMs": 1000,
+    "text": "Jason, from Acme Robotics, already told us his S L A tier, his integration, and his escalation contact, in an earlier session. Now he's back with a new problem. Watch: the agent answers immediately, citing exactly what it remembered. No re-asking. The moment this session closes, the new turn gets distilled into fresh semantic facts, ready for next time.",
+    "displayText": "Jason, from Acme Robotics, already told us his SLA tier, his integration, and his escalation contact — in an earlier session. Now he's back with a new problem. Watch: the agent answers immediately, citing exactly what it remembered. No re-asking. The moment this session closes, the new turn gets distilled into fresh semantic facts, ready for next time.",
+    "visual": "Chat thread, recall chips appearing (· remembered), close session, trace log showing distillation complete",
+    "status": "ready"
+  },
+  {
+    "id": "03-memory-off",
+    "targetStartMs": 55000,
+    "targetDurationMs": 29000,
+    "postRollMs": 1000,
+    "text": "Same question. Same agent. Memory switched off. Zero recall, nothing to work with, so it has to ask Jason to repeat everything he already told us. That's the counterfactual: same agent, same question, only memory toggled.",
+    "displayText": "Same question. Same agent. Memory switched off. Zero recall — nothing to work with, so it has to ask Jason to repeat everything he already told us. That's the counterfactual: same agent, same question, only memory toggled.",
+    "visual": "Identical prompt sent with memory=off, zero recall chips visible",
+    "status": "ready"
+  },
+  {
+    "id": "04-facts-close",
+    "targetStartMs": 84000,
+    "targetDurationMs": 20000,
+    "postRollMs": 2000,
+    "text": "That's the semantic fact store behind it: scoped to Acme, current, with session provenance. We measured the difference with a real evaluation harness. Repeat-question rate moves from one point zero zero without memory, to zero point zero zero with it. Never Ask Twice. Github dot com slash Marcelle Labs slash never dash ask dash twice.",
+    "displayText": "That's the semantic fact store behind it — scoped to Acme, current, with session provenance. We measured the difference with a real evaluation harness. Repeat-question rate moves from 1.00 without memory to 0.00 with it. Never Ask Twice. github.com/Marcelle-Labs/never-ask-twice.",
+    "visual": "Facts dashboard, hold on the fact list, close on repo link / 0.00 vs 1.00 callout",
+    "status": "ready"
+  }
+]
