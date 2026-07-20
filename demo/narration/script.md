@@ -58,10 +58,10 @@ card or the landing page's "0.00 vs 1.00" callout.
 
 ## What's frozen vs. what's new in this pass
 
-| | Original (HAC-31, 2:56) | This re-record |
+| | Original (2:56) | This re-record |
 |---|---|---|
 | Script beats | problem → session 1 write → session 2 recall → manager/ablation → architecture bridge | problem → memory-on recall → memory-off contrast → facts + close (matches actual `record-demo.ts` timeline) |
-| Narration | personal mic | ElevenLabs voice (Doppler-sourced credentials) |
+| Narration | personal mic | ElevenLabs voice (credentials from the environment) |
 | Fixture | `acme_corp`/`jason_99` | unchanged |
 | Ablation number | 0.00 vs 1.00 | unchanged — reverified live post-deploy |
 | Architecture beat | included | dropped — confirmed a separate Devpost requirement, not video content |
@@ -76,7 +76,7 @@ card or the landing page's "0.00 vs 1.00" callout.
 - [ ] Window position/size matches production capture settings
       (`DEMO_WINDOW_POSITION`)
 - [ ] Generate narration via `demo/narration/generate.mjs`
-      (`doppler run` injects credentials, never typed into a file)
+      (credentials injected from the environment, never typed into a file)
 - [ ] Record screen via `pnpm tsx scripts/record-demo.ts`
 - [ ] Mux screen capture + `narration/output/narration.mp3` in an editor
 - [ ] Burn in or attach `narration/output/narration.srt`/`.vtt`

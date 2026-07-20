@@ -3,18 +3,18 @@
 This directory is the repository-native source for the under-three-minute
 judge demo: script, scene targets, voice settings, pronunciation guidance,
 audio segments, timing, and captions. Modeled on the production-packet
-discipline used for the `workspace.json` Build Week submission (HAC-121 /
-HAC-160 in that project) — story order first, evidence-labeled runs,
-transcript/captions frozen alongside the audio, no hidden cuts.
+discipline used for a prior Build Week submission — story order first,
+evidence-labeled runs, transcript/captions frozen alongside the audio, no
+hidden cuts.
 
-This is a **re-record**, not a rescript. The frozen script beats (HAC-31)
-and the eval-fixture tenant/ablation number (HAC-73) are unchanged. What's
-changing is the narration track: the original submission's voiceover was
+This is a **re-record**, not a rescript. The frozen script beats and the
+eval-fixture tenant/ablation number are unchanged. What's changing is the
+narration track: the original submission's voiceover was
 recorded with a personal mic and reads as amateur; this pass replaces it
 with an ElevenLabs voice while recapturing after the tenant-isolation fix
 landed, so the recorded session is the "permanently accurate" one rather
 than one that could drift if a judge touches the shared tenant (see
-`HAC-73` closing note).
+the tenant-isolation closing note).
 
 The architecture diagram is confirmed a **separate** Devpost submission
 requirement (fetched from the official rules directly), not something the
@@ -38,11 +38,11 @@ The voice must be one you own or are authorized to use in ElevenLabs.
 ## Generate a draft
 
 Requirements: Node 20+, `ffmpeg`/`ffprobe`, and an authorized ElevenLabs
-voice. Credentials come from Doppler (`dev_week_26_openai` project,
-`prd_qwen_hackathon_26` config) — never typed into a file or chat:
+voice. Credentials come from your secret manager and are injected into the
+environment — never typed into a file or chat:
 
 ```bash
-doppler run --project dev_week_26_openai --config prd_qwen_hackathon_26 -- \
+ELEVENLABS_API_KEY=... ELEVENLABS_VOICE_ID=... \
   node demo/narration/generate.mjs
 node demo/narration/concatenate.mjs
 node demo/narration/generate-captions.mjs
@@ -71,7 +71,7 @@ packet is modeled on.
 ## Story order (what's actually captured)
 
 This mirrors `scripts/record-demo.ts`'s real, current timeline — not the
-original HAC-31 beat labels, which described an earlier cut of the flow:
+original beat labels, which described an earlier cut of the flow:
 
 1. **0:00–0:16** — Landing, enter chat. The problem: support that forces
    customers to repeat themselves.
@@ -103,11 +103,11 @@ rules set a maximum, not a minimum.
   accurate (sentence-level, generated from actual measured audio timing,
   not the pre-recording targets).
 
-## Frozen fixture (do not change without a new HAC-31/HAC-73-style ticket)
+## Frozen fixture (do not change without a new tracked ticket)
 
 - `accountId`/`customerId`: `acme_corp` / `jason_99`
 - Reset/seed path: `GET /eval-snapshot?tenant=eval-fixture` (pinned,
-  read-only — added in the HAC-73 fix, commit `498711d`)
+  read-only — added in the tenant-isolation fix, commit `498711d`)
 - Demo prompt: `"the integration is failing again, can you route this"`
 - Setup message (seeds the facts before recording starts):
   `"We're Acme Robotics. Our SLA tier is gold, our product config requires
@@ -118,8 +118,8 @@ rules set a maximum, not a minimum.
 ## Review before recording lock
 
 1. Approve the ElevenLabs voice, model, and settings in
-   `narration/voice.example.json` (values come from Doppler, not this
-   file).
+   `narration/voice.example.json` (credential values come from the
+   environment, not this file).
 2. Approve `narration/script.md`.
 3. Generate narration, run `scripts/record-demo.ts` against the live URL,
    and manually mux video + narration.mp3 in an editor — this pipeline

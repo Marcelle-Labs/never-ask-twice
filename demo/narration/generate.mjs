@@ -16,7 +16,7 @@ const voiceId = process.env.ELEVENLABS_VOICE_ID;
 if (!apiKey || !voiceId) {
   console.error(
     "ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID are required. Run via:\n" +
-      "  doppler run --project dev_week_26_openai --config prd_qwen_hackathon_26 -- node demo/narration/generate.mjs\n" +
+      "  ELEVENLABS_API_KEY=... ELEVENLABS_VOICE_ID=... node demo/narration/generate.mjs\n" +
       "No request was made and no credentials were printed.",
   );
   process.exit(2);

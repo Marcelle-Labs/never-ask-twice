@@ -11,5 +11,5 @@
     "use_speaker_boost": true,
     "speed": 1.0
   },
-  "notes": "Draft configuration only. ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID are supplied through the environment (Doppler project dev_week_26_openai, config prd_qwen_hackathon_26) and must identify a voice you are authorized to use. Direct HTTP is used against the current ElevenLabs TTS stream endpoint so no SDK dependency is needed."
+  "notes": "Draft configuration only. ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID are supplied through the environment by your secret manager and must identify a voice you are authorized to use. Direct HTTP is used against the current ElevenLabs TTS stream endpoint so no SDK dependency is needed."
 }
