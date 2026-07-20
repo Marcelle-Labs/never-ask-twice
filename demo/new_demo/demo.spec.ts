@@ -101,7 +101,10 @@ async function apiPost(path: string, body: Record<string, unknown>) {
 }
 
 test("never-ask-twice demo", async ({ page }) => {
-  test.setTimeout(180_000);
+  // Must exceed the sum of all per-checkpoint holds plus API latency and
+  // typing. With real narration-length holds (~160s of audio) the old
+  // 180s budget timed out mid-capture at P9.
+  test.setTimeout(480_000);
 
   // -----------------------------------------------------------------------
   // P1 — Landing page.

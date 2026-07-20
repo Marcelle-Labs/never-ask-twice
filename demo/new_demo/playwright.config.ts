@@ -11,7 +11,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 300_000,
+  timeout: 480_000,
   expect: { timeout: 30_000 },
   use: {
     baseURL: process.env.DEMO_BASE_URL,
