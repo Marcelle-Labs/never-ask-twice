@@ -104,27 +104,27 @@
       <!-- right: proof instrument -->
       <div style="background:#0B0B0D;border:1px solid #1f1f22;border-radius:14px;padding:28px;box-shadow:0 12px 40px rgba(0,0,0,0.35)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
-          <span style="font-family:'Geist Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:#71717A">Repeat-question rate</span>
-          <span style="font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#52525B">measured</span>
+          <span style="font-family:'Geist Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:#71717A">The distillation cycle</span>
+          <span style="font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#52525B">live</span>
         </div>
-        <!-- with memory -->
+        <!-- free text in -->
         <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:22px">
           <div style="display:flex;align-items:baseline;justify-content:space-between">
-            <span style="font-family:'Geist Mono',monospace;font-size:13px;color:#A1A1AA">with memory</span>
-            <span style="font-family:'Geist Mono',monospace;font-size:42px;font-weight:500;line-height:1;color:#4ADE80;letter-spacing:-0.01em">0.00</span>
-          </div>
-          <div style="height:6px;border-radius:999px;background:#161619;overflow:hidden"><div style="height:100%;width:2%;background:#4ADE80;border-radius:999px"></div></div>
-        </div>
-        <!-- without memory -->
-        <div style="display:flex;flex-direction:column;gap:9px">
-          <div style="display:flex;align-items:baseline;justify-content:space-between">
-            <span style="font-family:'Geist Mono',monospace;font-size:13px;color:#A1A1AA">without memory</span>
-            <span style="font-family:'Geist Mono',monospace;font-size:42px;font-weight:500;line-height:1;color:#8A8F98;letter-spacing:-0.01em">1.00</span>
+            <span style="font-family:'Geist Mono',monospace;font-size:13px;color:#A1A1AA">a session's free text</span>
+            <span style="font-family:'Geist Mono',monospace;font-size:42px;font-weight:500;line-height:1;color:#8A8F98;letter-spacing:-0.01em">in</span>
           </div>
           <div style="height:6px;border-radius:999px;background:#161619;overflow:hidden"><div style="height:100%;width:100%;background:#3a3a3e;border-radius:999px"></div></div>
         </div>
+        <!-- structured facts out -->
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <span style="font-family:'Geist Mono',monospace;font-size:13px;color:#A1A1AA">structured, scoped facts</span>
+            <span style="font-family:'Geist Mono',monospace;font-size:42px;font-weight:500;line-height:1;color:#4ADE80;letter-spacing:-0.01em">out</span>
+          </div>
+          <div style="height:6px;border-radius:999px;background:#161619;overflow:hidden"><div style="height:100%;width:100%;background:#4ADE80;border-radius:999px"></div></div>
+        </div>
         <div style="height:1px;background:#1c1c1f;margin:24px 0 14px"></div>
-        <p style="margin:0;font-family:'Geist Mono',monospace;font-size:11.5px;line-height:1.5;color:#6B6B72;letter-spacing:0.02em">controlled ablation · same agent, memory toggled · evaluation harness</p>
+        <p style="margin:0;font-family:'Geist Mono',monospace;font-size:11.5px;line-height:1.5;color:#6B6B72;letter-spacing:0.02em">Qwen distills a closed session into a constrained schema · run it on a customer we've never seen and watch</p>
       </div>
     </div>
   </section>
@@ -234,13 +234,13 @@
         </div>
         <div style="background:#0A0A0C;border:1px solid #1c1c1f;border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:12px">
           <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#52525B">04</span><span style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#6B6B72;border:1px solid #2a2a2e;border-radius:4px;padding:2px 6px">SCORE</span></div>
-          <h3 style="margin:0;font-size:17px;font-weight:600;color:#F4F4F5">Measure</h3>
-          <p style="margin:0;font-size:13.5px;line-height:1.5;color:#9A9AA2">An evaluation harness scores repeat-question rate. With memory 0.00, without 1.00.</p>
+          <h3 style="margin:0;font-size:17px;font-weight:600;color:#F4F4F5">Regression-check</h3>
+          <p style="margin:0;font-size:13.5px;line-height:1.5;color:#9A9AA2">An eval harness checks that facts survive, supersede, and expire as they should across sessions.</p>
         </div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:14px;background:#0A0A0C;border:1px solid #1c1c1f;border-radius:12px;padding:22px 24px">
         <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.1em;color:#4ADE80;border:1px solid rgba(74,222,128,0.25);border-radius:5px;padding:3px 8px;flex:none;margin-top:1px">PROOF</span>
-        <p style="margin:0;font-size:15px;line-height:1.6;color:#B4B4BA;max-width:880px">We measured it. In a controlled ablation — the same agent with memory toggled off — repeat-question rate moves from <span style="font-family:'Geist Mono',monospace;color:#4ADE80">0.00</span> to <span style="font-family:'Geist Mono',monospace;color:#8A8F98">1.00</span>. Every returning customer forced to re-explain. Memory is the difference between zero and one.</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#B4B4BA;max-width:880px">Reproduce it. Invent a customer this system has never seen, describe them in prose, close the session, and watch Qwen distill what you said — and only what you said — into structured facts. Come back in a new session and the agent already knows. Every fact it uses is cited, scoped to that customer, and revocable.</p>
       </div>
     </div>
   </section>

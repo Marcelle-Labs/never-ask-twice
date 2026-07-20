@@ -57,10 +57,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         <div style="font-weight:700;margin-bottom:var(--sp-1);font-size:var(--text-sm);">Session</div>
         <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-muted);word-break:break-all;">${htmlEscape(sessionId)}</div>
       </div>
-      <!-- Coverage card — populated from /eval-snapshot, hidden until resolved.
-           Previously showed a "With memory / Without memory" comparison whose
-           no-memory figure was a hardcoded 1.00, never measured. The comparison
-           is gone; only the live coverage count remains. -->
+      <!-- Coverage card — populated from /eval-snapshot, hidden until resolved. -->
       <div id="proof-card" class="card proof-card" style="display:none;margin-top:var(--sp-4);">
         <div class="panel-label" style="margin-bottom:var(--sp-3);">Known Context</div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--sp-3);">
@@ -372,6 +369,11 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 </html>
 `;
 
+// The per-fact confidence badge was removed deliberately: for seeded facts it
+// was a hardcoded literal, and for distilled facts it is the model's own
+// self-reported number. Neither is a calibrated measurement, so rendering
+// "N% conf" asserted precision this system does not have. The card shows
+// predicateClass (structural schema data) and the originating session instead.
 export const FactsView = (facts: SemanticFactRecord[], coveredPredicates: number, requiredPredicates: number) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -392,11 +394,9 @@ export const FactsView = (facts: SemanticFactRecord[], coveredPredicates: number
 
     <main style="padding:var(--sp-8) min(var(--sp-8), 4vw);max-width:960px;margin:0 auto;width:100%;">
       <h2 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--sp-2);letter-spacing:-0.02em;">Semantic Fact Store</h2>
-      <p style="color:var(--text-muted);font-size:var(--text-sm);margin-bottom:var(--sp-8);">Distilled customer intelligence with high-confidence provenance.</p>
+      <p style="color:var(--text-muted);font-size:var(--text-sm);margin-bottom:var(--sp-8);">Facts distilled from closed sessions, each carrying the session it came from.</p>
 
-      <!-- Coverage headline — counted from the live fact store. Not an
-           ablation: there is no no-memory arm measured here, so none is
-           claimed. -->
+      <!-- Coverage headline -->
       <div class="card" style="margin-bottom:var(--sp-8);border-color:var(--trace-semantic-border);background:var(--trace-semantic-bg);">
         <div style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.03em;margin-bottom:var(--sp-1);color:var(--memory);">
           required context covered: ${coveredPredicates} of ${requiredPredicates}
@@ -411,7 +411,7 @@ export const FactsView = (facts: SemanticFactRecord[], coveredPredicates: number
           <div class="card trace-semantic">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-3);">
               <span class="badge badge-semantic">${htmlEscape(f.predicate)}</span>
-              <span style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--memory);">${Math.round(f.confidence * 100)}% conf</span>
+              <span style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-faint);">${htmlEscape(f.predicateClass)}</span>
             </div>
             <div style="font-size:var(--text-lg);font-weight:600;margin-bottom:var(--sp-4);">"${htmlEscape(f.object)}"</div>
             <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-faint);border-top:1px solid var(--border);padding-top:var(--sp-3);margin-bottom:var(--sp-2);">
