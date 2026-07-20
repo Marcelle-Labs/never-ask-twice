@@ -92,8 +92,8 @@ test.describe("Chat UI behavioral audit", () => {
     const snap = await (await page.request.get(`${BASE_URL}/eval-snapshot`)).json();
     console.log("[audit][S2] /eval-snapshot:", snap);
     console.log(
-      "[audit][S2] memoryOnReaskRate === memoryOffReaskRate ?",
-      snap.memoryOnReaskRate === snap.memoryOffReaskRate,
+      "[audit][S2] coverage:",
+      `${snap.coveredPredicates}/${snap.requiredPredicates}`,
     );
 
     expect(allIdentical, "memory-OFF replies should vary, not read as a stuck loop").toBe(false);
@@ -214,12 +214,10 @@ test.describe("Chat UI behavioral audit", () => {
 
     await page.goto(`${BASE_URL}/chat`, { waitUntil: "networkidle" });
     await expect(page.locator("#proof-card")).toBeVisible({ timeout: 15_000 });
-    const chatMemOn = Number(await page.locator("#proof-mem-on").textContent());
-    const chatMemOff = Number(await page.locator("#proof-mem-off").textContent());
-    console.log(`[audit][S6] Chat proof card: on=${chatMemOn} off=${chatMemOff}`);
+    const chatCoverage = (await page.locator("#proof-coverage").textContent())?.trim();
+    console.log(`[audit][S6] Chat coverage card: ${chatCoverage}`);
 
-    expect(chatMemOn).toBeCloseTo(snap.memoryOnReaskRate, 2);
-    expect(chatMemOff).toBeCloseTo(snap.memoryOffReaskRate, 2);
+    expect(chatCoverage).toBe(`${snap.coveredPredicates} / ${snap.requiredPredicates}`);
     expect(factCards, "dashboard should show the same fact count as eval-snapshot").toBe(snap.factsCount);
   });
 });

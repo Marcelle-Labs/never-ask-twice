@@ -589,6 +589,13 @@ async function resolveDashboardTenant(c: Context, store: MemoryStore, qwen: Qwen
   return { accountId: visitor.accountId, customerId: visitor.customerId };
 }
 
+// This endpoint reports required-predicate COVERAGE over the current fact
+// store. It is not an ablation. The previous shape returned
+// `memoryOnReaskRate` (a coverage check dressed as a measured rate) and
+// `memoryOffReaskRate: 1.0` (a hardcoded constant that was never measured at
+// all), which the /facts view then captioned "live ablation". Both claims
+// were false, so both fields are gone. Report what is actually derived from
+// live data and nothing else.
 app.get("/eval-snapshot", async (c) => {
   const { accountId, customerId } = await resolveDashboardTenant(c, store, qwen);
   const facts = await store.currentFacts(accountId, customerId, new Date());
@@ -596,8 +603,8 @@ app.get("/eval-snapshot", async (c) => {
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
   return c.json({
     ok: true,
-    memoryOnReaskRate: missing.length > 0 ? 1.0 : 0.0,
-    memoryOffReaskRate: 1.0,
+    requiredPredicates: REQUIRED_PREDICATES.length,
+    coveredPredicates: REQUIRED_PREDICATES.length - missing.length,
     factsCount: facts.length,
     missingPredicates: missing,
     accountId,
@@ -610,8 +617,11 @@ app.get("/eval-snapshot", async (c) => {
   const facts = await store.currentFacts(accountId, customerId, new Date());
   const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
-  const memOnReaskRate = missing.length > 0 ? 1.0 : 0.0;
-  return c.html(FactsView(facts, memOnReaskRate), 200, { "Cache-Control": "no-store" });
+  return c.html(
+    FactsView(facts, REQUIRED_PREDICATES.length - missing.length, REQUIRED_PREDICATES.length),
+    200,
+    { "Cache-Control": "no-store" },
+  );
 });
 
   return app;

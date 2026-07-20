@@ -48,7 +48,10 @@ test.describe("Never Ask Twice — live demo preflight", () => {
 
     const verify = await (await page.request.get(`${BASE_URL}/eval-snapshot?tenant=eval-fixture`)).json();
     expect(verify.missingPredicates.length).toBe(0);
-    expect(verify.memoryOnReaskRate).toBe(0);
+    expect(verify.coveredPredicates).toBe(verify.requiredPredicates);
+    // The fabricated no-memory baseline must never come back.
+    expect(verify.memoryOffReaskRate).toBeUndefined();
+    expect(verify.memoryOnReaskRate).toBeUndefined();
   });
 
   test("memory ON — recalls Salesforce / SSO / Gold / Priya", async ({ page }) => {
@@ -59,8 +62,10 @@ test.describe("Never Ask Twice — live demo preflight", () => {
     await expect(page.locator("#memory-status")).toHaveText(/Memory ON/i);
 
     await expect(page.locator("#proof-card")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("#proof-mem-on")).toHaveText("0.00");
-    await expect(page.locator("#proof-mem-off")).toHaveText("1.00");
+    await expect(page.locator("#proof-coverage")).toHaveText("4 / 4");
+    // Guard the claim-discipline rule: the no-memory 1.00 must not render.
+    await expect(page.locator("#proof-mem-off")).toHaveCount(0);
+    await expect(page.getByText("1.00")).toHaveCount(0);
 
     const input = page.locator("#user-input");
     await input.fill(DEMO_PROMPT);
@@ -84,7 +89,9 @@ test.describe("Never Ask Twice — live demo preflight", () => {
     await expect(page.getByText(/salesforce/i)).toBeVisible();
     await expect(page.getByText(/\bsso\b/i)).toBeVisible();
     await expect(page.getByText(/gold/i)).toBeVisible();
-    await expect(page.getByText(/repeat-question rate/i)).toBeVisible();
+    await expect(page.getByText(/required context covered/i)).toBeVisible();
+    // The dashboard must not reintroduce the fabricated ablation headline.
+    await expect(page.getByText(/no memory|live ablation/i)).toHaveCount(0);
   });
 
   test("session close — distillation and write-path events", async ({ page }) => {

@@ -57,19 +57,17 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         <div style="font-weight:700;margin-bottom:var(--sp-1);font-size:var(--text-sm);">Session</div>
         <div style="font-size:var(--text-xs);font-family:var(--font-mono);color:var(--text-muted);word-break:break-all;">${htmlEscape(sessionId)}</div>
       </div>
-      <!-- VR-489 · UX2: proof card — populated from /eval-snapshot, hidden until resolved -->
+      <!-- Coverage card — populated from /eval-snapshot, hidden until resolved.
+           Previously showed a "With memory / Without memory" comparison whose
+           no-memory figure was a hardcoded 1.00, never measured. The comparison
+           is gone; only the live coverage count remains. -->
       <div id="proof-card" class="card proof-card" style="display:none;margin-top:var(--sp-4);">
-        <div class="panel-label" style="margin-bottom:var(--sp-3);">Memory Impact</div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--sp-2);">
-          <span style="font-size:var(--text-xs);color:var(--text-muted);">With memory</span>
-          <span id="proof-mem-on" style="font-size:var(--text-2xl);font-weight:800;color:var(--memory);">—</span>
-        </div>
+        <div class="panel-label" style="margin-bottom:var(--sp-3);">Known Context</div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--sp-3);">
-          <span style="font-size:var(--text-xs);color:var(--text-muted);">Without memory</span>
-          <span id="proof-mem-off" style="font-size:var(--text-2xl);font-weight:800;color:var(--text-faint);">—</span>
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">Required context covered</span>
+          <span id="proof-coverage" style="font-size:var(--text-2xl);font-weight:800;color:var(--memory);">—</span>
         </div>
-        <div class="panel-label" style="margin-bottom:0;">repeat-question rate</div>
-        <div style="font-size:var(--text-xs);color:var(--text-faint);font-family:var(--font-mono);margin-top:var(--sp-2);">derived from current fact store · /eval-snapshot — not a live tally of this session</div>
+        <div style="font-size:var(--text-xs);color:var(--text-faint);font-family:var(--font-mono);margin-top:var(--sp-2);">counted from current fact store · /eval-snapshot — not a live tally of this session</div>
       </div>
 
       <div style="margin-top:var(--sp-6);">
@@ -356,15 +354,16 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       window.history.replaceState({}, '', cleanUrl.toString());
     }
 
-    // VR-489 · UX2: load repeat-question rate from live /eval-snapshot
+    // Load required-predicate coverage from live /eval-snapshot.
     (async function loadProofCard() {
       try {
         var r = await fetch('/eval-snapshot');
         if (!r.ok) return;
         var snap = await r.json();
         if (!snap || !snap.ok) return;
-        document.getElementById('proof-mem-on').textContent = snap.memoryOnReaskRate.toFixed(2);
-        document.getElementById('proof-mem-off').textContent = snap.memoryOffReaskRate.toFixed(2);
+        if (typeof snap.coveredPredicates !== 'number' || typeof snap.requiredPredicates !== 'number') return;
+        document.getElementById('proof-coverage').textContent =
+          snap.coveredPredicates + ' / ' + snap.requiredPredicates;
         document.getElementById('proof-card').style.display = '';
       } catch (_) {}
     })();
@@ -373,7 +372,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 </html>
 `;
 
-export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) => `
+export const FactsView = (facts: SemanticFactRecord[], coveredPredicates: number, requiredPredicates: number) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -395,13 +394,15 @@ export const FactsView = (facts: SemanticFactRecord[], memOnReaskRate: number) =
       <h2 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--sp-2);letter-spacing:-0.02em;">Semantic Fact Store</h2>
       <p style="color:var(--text-muted);font-size:var(--text-sm);margin-bottom:var(--sp-8);">Distilled customer intelligence with high-confidence provenance.</p>
 
-      <!-- Ablation headline — derived from live fact store -->
+      <!-- Coverage headline — counted from the live fact store. Not an
+           ablation: there is no no-memory arm measured here, so none is
+           claimed. -->
       <div class="card" style="margin-bottom:var(--sp-8);border-color:var(--trace-semantic-border);background:var(--trace-semantic-bg);">
         <div style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.03em;margin-bottom:var(--sp-1);color:var(--memory);">
-          repeat-question rate: ${memOnReaskRate.toFixed(2)} (memory) vs 1.00 (no memory)
+          required context covered: ${coveredPredicates} of ${requiredPredicates}
         </div>
         <div style="font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-mono);">
-          live ablation — derived from current fact store · /eval-snapshot
+          counted from the current fact store · /eval-snapshot
         </div>
       </div>
 
