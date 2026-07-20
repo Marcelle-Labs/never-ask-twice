@@ -10,7 +10,7 @@ Enterprise Support MemoryAgent on Qwen Cloud
 ![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Runtime](https://img.shields.io/badge/Runtime-Node.js%2020-green)
-![Cloud](https://img.shields.io/badge/Cloud-Railway%20(live)%20%7C%20Alibaba%20FC%20pending-orange)
+![Cloud](https://img.shields.io/badge/Cloud-Alibaba%20FC%20(live)%20%7C%20Railway%20(live)-brightgreen)
 ![Model](https://img.shields.io/badge/Model-Qwen%20Cloud-purple)
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
@@ -40,7 +40,7 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
 |Qwen-backed live path|Done|Live on Railway with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
 |Railway deployment (primary live URL)|Done|[neverasktwice.dev](https://neverasktwice.dev) — Neon-backed, turn → close → recall cycle verified end-to-end. See [`deploy/railway.md`](deploy/railway.md).|
-|Alibaba Function Compute deployment|Ready (pending account verification)|`s.yaml` and handler export are wired; swap from Railway is a `DATABASE_URL` change. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
+|Alibaba Function Compute deployment|Live|Deployed and serving live Qwen + Postgres. Verify with `curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Note: Alibaba forces `Content-Disposition: attachment` on the default `*.fcapp.run` domain, so a browser downloads the response instead of rendering it — that is the platform's policy for the free subdomain, not a broken deploy. Verify by curl. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
 |Demo video|Done|[Watch the demo](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario with eval output.|
 |Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
 
@@ -63,7 +63,7 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
    pnpm mcp:list-tools
    ```
 
-7. Review deployment proof: [`deploy/railway.md`](deploy/railway.md) (live, primary) and [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (secondary target, wired and ready).
+7. Review deployment proof: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (Alibaba FC, live) and [`deploy/railway.md`](deploy/railway.md) (Railway, live — serves the browsable UI).
 8. Read the build log: [Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit).
 9. Watch the demo: [https://youtu.be/P254DPj-Mgw](https://youtu.be/P254DPj-Mgw).
 
@@ -107,7 +107,7 @@ Customer chat / MCP
         |
         v
 Hono API (same code, two deploy targets:
-           Railway - primary, live | Alibaba FC - swap-to-when-cleared)
+           Alibaba FC - live | Railway - live, serves browsable UI)
         |
         v
 MemoryService
@@ -203,7 +203,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 
 ## Project structure
 
-- `apps/api` — Hono API, local server, and Function Compute handler. Deploy-target-agnostic; live on Railway today.
+- `apps/api` — Hono API, local server, and Function Compute handler. Deploy-target-agnostic; live on both Alibaba FC and Railway.
 - `src/agent` — deterministic support-agent policy used by the eval harness.
 - `src/contracts.ts` — memory predicate enum, Zod contracts, and shared types.
 - `src/db` — Drizzle schema and SQL migration string.
@@ -214,7 +214,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 - `eval` — frozen three-session scenario, ground truth, expected output, and runner.
 - `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
 - `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
-- `deploy` — Railway deployment proof (live, primary) and Alibaba Function Compute deployment instructions (secondary target, wired and ready).
+- `deploy` — Alibaba Function Compute deployment proof (live) and Railway deployment proof (live).
 
 ## Key commands
 
