@@ -395,11 +395,63 @@ test("never-ask-twice demo", async ({ page }) => {
   await mark(page, "P8");
 
   // -----------------------------------------------------------------------
-  // P9 — Curl card overlay handled in edit; hold on a final clean frame
+  // P9 — Curl card: the ONLY on-camera proof of the Alibaba deployment.
   //
-  // Hold on the landing page. The curl card is burned in during ffmpeg
-  // assembly (see curl-card.txt and assemble.mjs).
+  // Because Alibaba forces Content-Disposition: attachment on *.fcapp.run,
+  // the FC host can never appear in a rendered address bar. This card is
+  // therefore load-bearing for the entire "runs on Alibaba Cloud" claim, so
+  // it is captured here as a real frame rather than deferred to post: it was
+  // previously a comment saying "burned in during assembly", assemble.mjs had
+  // no overlay step, and curl-card.txt still held a placeholder host — which
+  // together would have shipped a video with no visible FC proof at all.
+  //
+  // The JSON below is fetched live from FC at this moment. Nothing is typed.
   // -----------------------------------------------------------------------
   await page.goto(UI_BASE!, { waitUntil: "domcontentloaded" });
+
+  const proofRes = await fetch(`${FC_BASE}/health`);
+  const proofJson = await proofRes.json();
+  expect(proofJson.mode, "FC must still be qwen-live at the closing frame").toBe("qwen-live");
+  expect(FC_BASE).toContain(".fcapp.run");
+
+  await page.evaluate(
+    ({ host, json, status }) => {
+      const old = document.getElementById("demo-overlay");
+      if (old) old.remove();
+      const card = document.createElement("div");
+      card.id = "demo-curl-card";
+      card.style.cssText =
+        "position:fixed;inset:0;background:#050505;z-index:2147483647;" +
+        "display:flex;align-items:center;justify-content:center;" +
+        "font-family:'Geist Mono',ui-monospace,SFMono-Regular,monospace;";
+      // Dynamic values go in via textContent, never innerHTML — the host comes
+      // from env and the JSON from a network response, so neither is markup.
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "width:min(1180px,88vw);";
+      const mk = (css: string, text: string) => {
+        const el = document.createElement("div");
+        el.style.cssText = css;
+        el.textContent = text;
+        return el;
+      };
+      wrap.appendChild(mk(
+        "color:#6B6B72;font-size:15px;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:26px;",
+        "Reproduce it yourself"));
+      wrap.appendChild(mk(
+        "color:#4ADE80;font-size:27px;line-height:1.65;word-break:break-all;",
+        "$ curl " + host + "/health"));
+      wrap.appendChild(mk(
+        "color:#F4F4F5;font-size:24px;line-height:1.65;margin-top:18px;word-break:break-all;",
+        json));
+      wrap.appendChild(mk(
+        "color:#8A8F98;font-size:17px;margin-top:30px;",
+        "HTTP " + status + " · Alibaba Cloud Function Compute · live response, not a recording"));
+      card.appendChild(wrap);
+      document.body.appendChild(card);
+    },
+    { host: FC_BASE, json: JSON.stringify(proofJson), status: proofRes.status },
+  );
+
+  console.log(`[FC-PROOF/P9] ${FC_BASE}/health -> ${JSON.stringify(proofJson)}`);
   await mark(page, "P9");
 });

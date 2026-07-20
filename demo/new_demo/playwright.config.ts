@@ -20,5 +20,14 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: { mode: "on", size: { width: 1920, height: 1080 } },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // viewport MUST come after the device spread: devices["Desktop Chrome"]
+  // carries its own 1280x720 viewport, which otherwise overrides the
+  // top-level 1920x1080 and renders the page letterboxed inside a 1080p
+  // video canvas.
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1920, height: 1080 } },
+    },
+  ],
 });

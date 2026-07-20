@@ -1,0 +1,33 @@
+ON-SCREEN CURL CARD  (P9 overlay — use the real FC host)
+=========================================================
+
+# Reproduce the whole cycle yourself, against the live Alibaba FC deployment.
+# Invent any customer. Watch Qwen distill and recall their facts.
+
+BASE="https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run"
+
+# 1) health — Qwen + DB live on Function Compute
+curl -s $BASE/health
+# {"ok":true,"qwenConfigured":true,"databaseConfigured":true,"mode":"qwen-live"}
+
+# 2) a customer that has never existed -> distilled -> recalled
+#    (see README "Reproduce in 30 seconds" for the full turn/close/recall calls)
+
+Keep the card legible for ~4s. Monospace, high contrast, FC host visible.
+Optional: run it in a real terminal split and let the JSON print on camera —
+strongest possible "this is not staged" signal.
+
+
+ASSEMBLY (ffmpeg sketch)
+========================
+Per checkpoint you have: clip Pn (from Playwright video, trimmed to the held
+state) + audio Nn (ElevenLabs). Lay Nn under Pn, then concat.
+
+# normalize each clip to the narration length (pad/trim video to audio):
+#   for each n: ffmpeg -i Pn.mp4 -i Nn.mp3 -map 0:v -map 1:a -shortest seg_n.mp4
+# concat:
+#   ffmpeg -f concat -safe 0 -i list.txt -c copy never-ask-twice-demo.mp4
+
+Targets: <= 3:00 total, 1080p, YouTube/Vimeo public. Loudness -16 LUFS for
+consistent voice level across segments. Add a 0.3s crossfade between segments
+so the per-clip capture doesn't read as choppy.

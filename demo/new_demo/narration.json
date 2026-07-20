@@ -31,15 +31,17 @@
       "id": "N3",
       "checkpoint": "P3",
       "target_seconds": 24,
-      "text": "Now I close the session. Watch the response. Qwen reads the full transcript and distills durable facts into a constrained schema. Four facts. One for each thing I actually told it, and not one more. It didn't infer a fifth, and it didn't round anything up. That's the whole discipline. Extract what's there, and nothing that isn't.",
-      "delivery": "Slow down on 'Four facts.' — this is the technical proof point. Small pause after 'schema' to let the number appear. The count must match the live factsDistilled value on screen; if the demo message changes, re-check the number before rendering this segment."
+      "text": "Now I close the session. Watch the response. Qwen reads the full transcript and distills durable facts into a constrained schema. One fact for each thing I actually told it, and not one more. It didn't infer anything I didn't say, and it didn't round anything up. That's the whole discipline. Extract what's there, and nothing that isn't.",
+      "delivery": "Small pause after 'schema' to let the count appear on screen, then land 'and not one more' — that is the proof point.",
+      "note": "DELIBERATELY COUNT-AGNOSTIC. factsDistilled is not deterministic — observed 3 and 4 across live FC runs from the same-shaped message, because Qwen's predicate assignment varies (e.g. SAML classified as integration in one run, product_config in another). Narrating a fixed number risks contradicting the live figure on screen. Do not reintroduce 'Three facts' or 'Four facts' here."
     },
     {
       "id": "N4",
       "checkpoint": "P4",
       "target_seconds": 20,
-      "text": "These three facts were pulled from free text, by a live model call, and written to a real database. This customer appears nowhere in this codebase. No fixture, no seed. What you're seeing is extraction on novel input, not a replayed script.",
-      "delivery": "Deliberate. 'No fixture, no seed' is the credibility line — clean, unhurried."
+      "text": "These facts were pulled from free text, by a live model call, and written to a real database. This customer appears nowhere in this codebase. No fixture, no seed. What you're seeing is extraction on novel input, not a replayed script.",
+      "delivery": "Deliberate. 'No fixture, no seed' is the credibility line — clean, unhurried.",
+      "note": "Count-agnostic for the same reason as N3 — do not reintroduce 'These three facts'."
     },
     {
       "id": "N5",
