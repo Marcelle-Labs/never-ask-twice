@@ -1,0 +1,80 @@
+{
+  "voice_guidance": {
+    "recommended_voice": "a calm, mid-register technical narrator (e.g. 'Adam'/'Daniel' family) — not an announcer",
+    "model": "eleven_multilingual_v2 or eleven_turbo_v2_5 for speed",
+    "global_settings": {
+      "stability": 0.5,
+      "similarity_boost": 0.75,
+      "style": 0.15,
+      "use_speaker_boost": true
+    },
+    "notes": "Keep style low — this is understated, not hyped. Higher stability so each segment matches the others when stitched. Render each segment as its own file so timing can be tuned per-beat and re-rendered without touching the rest."
+  },
+  "pacing_target_wpm": 155,
+  "segments": [
+    {
+      "id": "N1",
+      "checkpoint": "P1",
+      "target_seconds": 18,
+      "text": "Customer support forgets you every time. New session, and you re-explain who you are, what you run, what broke last time. Never Ask Twice is a support agent that remembers, across sessions, and can prove where every remembered fact came from. Everything you're about to see is running live on Alibaba Cloud Function Compute.",
+      "delivery": "Even, grounded. Slight lift on 'remembers'. Full stop before the last sentence."
+    },
+    {
+      "id": "N2",
+      "checkpoint": "P2",
+      "target_seconds": 30,
+      "text": "Here's a customer the system has never seen. I'm inventing them right now. Gold SLA, single sign-on in their stack, escalations go to their platform lead. I'll type that the way a real rep would, as prose, not a form. The agent has no record of them, so on this first turn it does what it should. It asks for what it doesn't know.",
+      "delivery": "Conversational. Land 'inventing them right now' clearly — it's the honesty hook. Let a beat sit while the typing happens.",
+      "note": "If you use a specific invented name on camera, splice it in — keep the audio name matching the typed name."
+    },
+    {
+      "id": "N3",
+      "checkpoint": "P3",
+      "target_seconds": 24,
+      "text": "Now I close the session. Watch the response. Qwen reads the full transcript and distills durable facts into a constrained schema. Four facts. One for each thing I actually told it, and not one more. It didn't infer a fifth, and it didn't round anything up. That's the whole discipline. Extract what's there, and nothing that isn't.",
+      "delivery": "Slow down on 'Four facts.' — this is the technical proof point. Small pause after 'schema' to let the number appear. The count must match the live factsDistilled value on screen; if the demo message changes, re-check the number before rendering this segment."
+    },
+    {
+      "id": "N4",
+      "checkpoint": "P4",
+      "target_seconds": 20,
+      "text": "These three facts were pulled from free text, by a live model call, and written to a real database. This customer appears nowhere in this codebase. No fixture, no seed. What you're seeing is extraction on novel input, not a replayed script.",
+      "delivery": "Deliberate. 'No fixture, no seed' is the credibility line — clean, unhurried."
+    },
+    {
+      "id": "N5",
+      "checkpoint": "P5",
+      "target_seconds": 26,
+      "text": "New session. Same customer comes back with a different problem. Notice what didn't happen. It never asked who they are, their SLA, or their escalation path. It already knows. The customer never re-explains. That's the promise in the name.",
+      "delivery": "'Notice what didn't happen' — slight pause before it. End warm on 'the promise in the name.'"
+    },
+    {
+      "id": "N6",
+      "checkpoint": "P6",
+      "target_seconds": 16,
+      "text": "And it's auditable. Every answer surfaces the exact facts it used. The real cited payload, not what the interface happens to be showing. If you want to know why the agent said what it said, the evidence is right here.",
+      "delivery": "Confident. This is the differentiator — governed, provable recall."
+    },
+    {
+      "id": "N7",
+      "checkpoint": "P7",
+      "target_seconds": 20,
+      "text": "Memory in support is only safe if it's governed. A different tenant asking about this customer gets nothing. Isolation holds at the data boundary. And the customer can revoke. Remove a fact, and it's gone from the next recall. Scoped, sourced, revocable.",
+      "delivery": "'Scoped, sourced, revocable' — three beats, evenly weighted, like a closing chord."
+    },
+    {
+      "id": "N8",
+      "checkpoint": "P8",
+      "target_seconds": 10,
+      "text": "One honest note. Our automated eval is a regression harness for forgetting and supersession, not a live ablation. And the repo's own clean-room scan blocked our final push when it caught a config reference. We fixed the leak instead of bypassing the guard.",
+      "delivery": "Matter-of-fact, not apologetic. This candor is a feature. Slightly wry on the last line."
+    },
+    {
+      "id": "N9",
+      "checkpoint": "P9",
+      "target_seconds": 6,
+      "text": "Run it yourself. This curl hits the same Function Compute deployment.",
+      "delivery": "Clean, confident sign-off. No trail-off."
+    }
+  ]
+}
