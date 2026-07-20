@@ -562,7 +562,7 @@ button:active { transform: scale(0.97); }
   overflow-y: auto;
 }
 
-/* ── VR-488 · UX1: Recall-moment clarity ──────────────── */
+/* ── Recall-moment clarity ──────────────── */
 
 /* Bridge text: one-line connector between answer and chips */
 .recall-bridge {
@@ -583,14 +583,14 @@ button:active { transform: scale(0.97); }
   font-weight: 400;
 }
 
-/* ── VR-489 · UX2: Inline proof card ──────────────────── */
+/* ── Inline proof card ──────────────────── */
 
 .proof-card {
   background: rgba(74,222,128,0.03);
   border-color: var(--border-strong);
 }
 
-/* ── VR-490 · UX3: Trust and governance microcopy ──────── */
+/* ── Trust and governance microcopy ──────── */
 
 /* Trust strip under recalled chips in chat messages */
 .trust-strip {
@@ -638,7 +638,7 @@ button:active { transform: scale(0.97); }
   color: var(--amber);
 }
 
-/* ── Mobile smoke test (VR-531) ────────────────────────── */
+/* ── Mobile smoke test ────────────────────────── */
 /* Bar: "degrades gracefully," not pixel-perfect responsive.
    Someone tapping through from the landing page on a phone
    should not hit a horizontal-scroll mess or overlapping

@@ -8,6 +8,15 @@ coverage
 .windsurf/mcp.json
 .windsurf/rules/.DS_Store
 
+# IDE / agent tooling
+.idea/
+.claude/
+.devin/
+.playwright-mcp/
+.agents/
+.windsurf/
+AGENTS.md
+
 # Playwright artifacts
 test-results/
 playwright-report/

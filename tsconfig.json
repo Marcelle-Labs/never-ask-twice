@@ -4,5 +4,5 @@
     "noEmit": true
   }
   ,
-  "include": ["src", "scripts", "tests", "eval", "playwright.config.ts", "vitest.config.ts"]
+  "include": ["src", "scripts", "tests", "eval", "apps", "playwright.config.ts", "vitest.config.ts"]
 }

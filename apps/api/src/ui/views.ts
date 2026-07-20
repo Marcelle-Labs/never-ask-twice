@@ -150,7 +150,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         : escapeHtml(fact);
     }
 
-    // VR-492: human-readable chip labels built from structured predicate/object fields
+    // human-readable chip labels built from structured predicate/object fields
     var HUMAN_CHIP_LABELS = {
       sla_tier:           function(obj) { return obj === 'enterprise' ? 'Gold SLA' : obj + ' SLA'; },
       integration:        function(obj) { return obj; },
@@ -185,12 +185,12 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 
     // Single shared beat: chip render + trace-row glow in one synchronous call
     function fireRecallBeat(answer, citedFacts, turnId) {
-      // VR-488 · UX1: plain-English bridge so a first-time viewer understands in 10s
+      // plain-English bridge so a first-time viewer understands in 10s
       var bridgeHtml = citedFacts.length > 0
         ? '<div class="recall-bridge">Remembered from prior session</div>'
         : '';
 
-      // VR-488 · UX1: human-readable chips matching trace panel labels
+      // human-readable chips matching trace panel labels
       var chipsHtml = citedFacts.length > 0
         ? '<div class="recall-chips">'
             + citedFacts.map(function(f) {
@@ -202,7 +202,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         : '';
 
 
-      // VR-490 · UX3: governance trust strip — reads from real recall state
+      // governance trust strip — reads from real recall state
       var trustHtml = citedFacts.length > 0
         ? '<div class="trust-strip">Scoped to Acme · Current · Session provenance · Not expired</div>'
         : '';
@@ -342,7 +342,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       window.location.search = params.toString();
     }
 
-    // VR-514: Simulate Cold Start had no visible effect — surface a one-line
+    // Simulate Cold Start had no visible effect — surface a one-line
     // explanation in the trace panel on the reload it triggers, once.
     if (new URLSearchParams(window.location.search).get('coldStart') === '1') {
       addTrace('Fresh agent — no working context, memory store intact', 'working');

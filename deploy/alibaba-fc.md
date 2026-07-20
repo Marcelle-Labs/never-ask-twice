@@ -106,7 +106,7 @@ POST /recall (brand-new session, same account/customer):
        ...episodic entries...
      ],"usedTokens":117,"dropList":[]}
 
-Tenant isolation (HAC-73) carries over to FC — verified live:
+Tenant isolation carries over to FC — verified live:
   GET /eval-snapshot?tenant=eval-fixture -> accountId acme_corp, customerId jason_99
   GET /eval-snapshot (cookie-less, x2) -> two distinct visitor_* accountIds
 ```

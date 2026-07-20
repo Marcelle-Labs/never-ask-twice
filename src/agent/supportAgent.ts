@@ -30,7 +30,7 @@ const PREDICATE_MENTION: Partial<Record<string, (obj: string) => string>> = {
   timezone:           (obj) => `${obj} timezone`,
 };
 
-// VR-508: memory-OFF is the control condition — it must keep re-asking every
+// memory-OFF is the control condition — it must keep re-asking every
 // turn (repeat-question-rate stays 1.00), just without repeating the exact
 // same sentence, so it doesn't read as a stuck loop. One-time acknowledgment
 // of the customer's deflection, no ability to resolve without the facts.
@@ -67,7 +67,7 @@ function humanFactMention(predicate: string, object: string): string {
   return fn ? fn(object) : `${predicate.replace(/_/g, " ")} ${object}`;
 }
 
-// VR-517: once facts are resolved, the first reply in a session gets the full
+// once facts are resolved, the first reply in a session gets the full
 // reveal (unchanged — this is the ablation demo beat). Any later turn in the
 // same resolved session gets a short, varied acknowledgment instead of
 // repeating the full fact list every time.
@@ -85,7 +85,7 @@ const ALREADY_RESOLVED_ACKS: Array<(contact: string | null) => string> = [
 
 // customerTurns is the total count of customer turns in this session so far,
 // INCLUDING the current one (matches the counting convention already used
-// for VR-508 below). Only called when customerTurns >= 2.
+// for the control condition below). Only called when customerTurns >= 2.
 function humanAlreadyResolvedAck(customerTurns: number, contact: string | null): string {
   const variant = (customerTurns - 2) % ALREADY_RESOLVED_ACKS.length;
   return ALREADY_RESOLVED_ACKS[variant](contact);
@@ -140,7 +140,7 @@ export async function runSupportTurn(input: {
   );
 
   if (missingPredicates.length > 0) {
-    // VR-508: vary phrasing across turns in memory-OFF only — memory-ON keeps
+    // vary phrasing across turns in memory-OFF only — memory-ON keeps
     // its original wording untouched. Turn count must be scoped to THIS
     // session, in chronological order — recall.bundle is score-ranked and
     // token-budget-filtered (drops/reorders entries) and getAllEvents spans
@@ -168,7 +168,7 @@ export async function runSupportTurn(input: {
     ? `I have your account details on file — ${contextMentions.join(", ")}. ${routingLine}`
     : routingLine;
 
-  // VR-517: only the first resolved reply in a session gets the full reveal —
+  // only the first resolved reply in a session gets the full reveal —
   // that's the ablation demo beat and must stay exactly as-is. Later turns in
   // the same resolved session get a varied acknowledgment instead of
   // repeating the full fact list every time.

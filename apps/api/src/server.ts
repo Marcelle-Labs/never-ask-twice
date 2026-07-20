@@ -297,7 +297,7 @@ app.post("/turn", async (c) => {
         now: ts,
       });
 
-      // VR-515: persist the agent's reply as an event too — previously only
+      // persist the agent's reply as an event too — previously only
       // the customer's message was appended, so agent bubbles vanished on
       // a page reload mid-session.
       if (agentResponse.answer) {
