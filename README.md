@@ -6,16 +6,19 @@
 
 Enterprise Support MemoryAgent on Qwen Cloud
 
-![CI](https://github.com/marcelle-labs/never-ask-twice/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Marcelle-Labs/never-ask-twice/actions/workflows/ci.yml/badge.svg)
 ![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Runtime](https://img.shields.io/badge/Runtime-Node.js%2020-green)
-![Cloud](https://img.shields.io/badge/Cloud-Alibaba%20FC%20(live)%20%7C%20Railway%20(live)-brightgreen)
+![Cloud](https://img.shields.io/badge/Cloud-Alibaba%20FC%20(live)-brightgreen)
 ![Model](https://img.shields.io/badge/Model-Qwen%20Cloud-purple)
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
 
-**Live demo:** [neverasktwice.dev](https://neverasktwice.dev) — try `/chat`, or hit `/health` directly.
+**Live demo:** [`/chat`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/chat) on Alibaba Function Compute, or hit [`/health`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health) directly — it reports `mode: "qwen-live"` when the Qwen path and database are both configured.
+
+> The Railway deployment at `neverasktwice.dev` is **no longer running** and the
+> domain returns 404. Alibaba Function Compute is the live path.
 
 Customers don't want a smarter chatbot if they still have to repeat their SLA, setup, open issue, and escalation contact every time they come back.
 
@@ -38,15 +41,15 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |Deterministic eval harness|Done|`pnpm eval` prints memory ON/OFF re-ask and recall metrics.|
 |Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
-|Qwen-backed live path|Done|Live on Railway with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
-|Railway deployment (primary live URL)|Done|[neverasktwice.dev](https://neverasktwice.dev) — Neon-backed, turn → close → recall cycle verified end-to-end. See [`deploy/railway.md`](deploy/railway.md).|
-|Alibaba Function Compute deployment|Live|Deployed and serving live Qwen + Postgres. Verify with `curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Note: Alibaba forces `Content-Disposition: attachment` on the default `*.fcapp.run` domain, so a browser downloads the response instead of rendering it — that is the platform's policy for the free subdomain, not a broken deploy. Verify by curl. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
+|Qwen-backed live path|Done|Live on Alibaba FC with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
+|Railway deployment|Retired|`neverasktwice.dev` returned 404 when last checked; the Railway app is gone. [`deploy/railway.md`](deploy/railway.md) is kept as the record of how it was built and verified while it ran.|
+|Alibaba Function Compute deployment|Live — primary|Deployed and serving live Qwen + Postgres. Verify with `curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Note: Alibaba forces `Content-Disposition: attachment` on the default `*.fcapp.run` domain, so a browser downloads the response instead of rendering it — that is the platform's policy for the free subdomain, not a broken deploy. Verify by curl. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
 |Demo video|Done|[Watch the demo](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario with eval output.|
 |Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
 
 ## Judge path
 
-1. Try the live deployment: [neverasktwice.dev](https://neverasktwice.dev) — `/chat` for the UI, `/health` for capability status.
+1. Try the live deployment on Alibaba Function Compute: [`/chat`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/chat) for the UI, [`/health`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health) for capability status.
 2. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
 3. Run the ablation:
 
@@ -63,7 +66,7 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
    pnpm mcp:list-tools
    ```
 
-7. Review deployment proof: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (Alibaba FC, live) and [`deploy/railway.md`](deploy/railway.md) (Railway, live — serves the browsable UI).
+7. Review deployment proof: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (Alibaba FC — live) and [`deploy/railway.md`](deploy/railway.md) (Railway — retired, kept as the build and verification record).
 8. Read the build log: [Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit).
 9. Watch the demo: [https://youtu.be/P254DPj-Mgw](https://youtu.be/P254DPj-Mgw).
 
@@ -107,7 +110,7 @@ Customer chat / MCP
         |
         v
 Hono API (same code, two deploy targets:
-           Alibaba FC - live | Railway - live, serves browsable UI)
+           Alibaba FC - live | Railway - retired)
         |
         v
 MemoryService
@@ -203,7 +206,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 
 ## Project structure
 
-- `apps/api` — Hono API, local server, and Function Compute handler. Deploy-target-agnostic; live on both Alibaba FC and Railway.
+- `apps/api` — Hono API, local server, and Function Compute handler. Deploy-target-agnostic; currently live on Alibaba FC.
 - `src/agent` — deterministic support-agent policy used by the eval harness.
 - `src/contracts.ts` — memory predicate enum, Zod contracts, and shared types.
 - `src/db` — Drizzle schema and SQL migration string.
@@ -214,7 +217,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 - `eval` — frozen three-session scenario, ground truth, expected output, and runner.
 - `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
 - `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
-- `deploy` — Alibaba Function Compute deployment proof (live) and Railway deployment proof (live).
+- `deploy` — Alibaba Function Compute deployment proof (live) and Railway deployment proof (retired).
 
 ## Key commands
 

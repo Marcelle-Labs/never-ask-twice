@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
+// The Railway deployment at neverasktwice.dev is retired and the domain 404s.
+// Alibaba Function Compute is the live target.
+const BASE_URL =
+  process.env.DEMO_BASE_URL ??
+  "https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run";
 
 export default defineConfig({
   testDir: "./tests",

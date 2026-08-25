@@ -1,3 +1,8 @@
+> **Retired.** This Railway deployment is no longer running and
+> `neverasktwice.dev` returns 404. The live deployment is Alibaba Function
+> Compute — see [`alibaba-fc.md`](alibaba-fc.md). This document is kept as the
+> record of how the Railway path was built and verified while it ran.
+
 # Railway Deployment
 
 Never Ask Twice's primary judge-facing deployment runs on Railway. The app is deploy-target-agnostic — `apps/api/src/db.ts` opens a plain `pg.Pool` from `DATABASE_URL`, so Railway and Alibaba Function Compute run the same `dist/` build with no code changes between them. See [`alibaba-fc.md`](alibaba-fc.md) for the FC swap-over path, which becomes the secondary target once Alibaba account verification clears (tracked separately).
