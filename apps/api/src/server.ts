@@ -21,6 +21,11 @@ import { DrizzleMemoryStore } from "./drizzleStore.js";
 import { brandFaviconSvg } from "./ui/brand.js";
 import { ChatView, FactsView } from "./ui/views.js";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, seoHeadTags } from "./ui/seo.js";
+import {
+  buildSupportContext,
+  parseTopics,
+  SUPPORT_CONTEXT_TOPICS,
+} from "./webmcp/supportContext.js";
 
 // ---------------------------------------------------------------------------
 // Qwen client - zero-vector fallback when DASHSCOPE_API_KEY is absent
@@ -124,8 +129,15 @@ function getOrCreateVisitor(c: Context): {
     return { accountId: `visitor_${existing}`, customerId: `visitor_${existing}`, isNew: false };
   }
   const newId = randomUUID();
+  // Secure is set whenever the request arrived over HTTPS (behind Railway's
+  // proxy the scheme shows up in x-forwarded-proto, not in the request URL).
+  const forwardedProto = c.req.header("x-forwarded-proto");
+  const isHttps = forwardedProto
+    ? forwardedProto.split(",")[0].trim() === "https"
+    : new URL(c.req.url).protocol === "https:";
   setCookie(c, VISITOR_COOKIE, newId, {
     httpOnly: true,
+    secure: isHttps,
     sameSite: "Lax",
     maxAge: 60 * 60 * 24 * 365,
     path: "/",
@@ -140,7 +152,17 @@ export function createApp(deps: { store: MemoryStore; memory: MemoryService; qwe
   const { store, memory, qwen } = deps;
   const app = new Hono();
   app.use("*", logger());
-  app.use("*", cors());
+
+  // The global policy is wildcard CORS, which is fine for the existing public
+  // read endpoints but must NOT extend to the WebMCP surface: that route reads
+  // the visitor's own support context out of their cookie, so a wildcard ACAO
+  // would let any origin read it via a credentialed fetch. /webmcp/* is
+  // deliberately left with no CORS headers at all => same-origin only.
+  const globalCors = cors();
+  app.use("*", async (c, next) => {
+    if (c.req.path.startsWith("/webmcp/")) return next();
+    return globalCors(c, next);
+  });
 
 // ---------------------------------------------------------------------------
 // GET /health
@@ -477,6 +499,57 @@ app.get("/recall", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /webmcp/support-context   (WebMCP spike)
+//
+// Server capability behind the browser-native `get_support_context` tool.
+// The model may name topics; it may NOT name a tenant. Scope comes from the
+// same `getOrCreateVisitor` cookie path that /chat and /facts already trust,
+// so there is exactly one tenant-selection code path in the app.
+//
+// Deliberately not a proxy for POST /recall: that interface takes accountId
+// and customerId from the caller, which is precisely the authority a browser
+// agent must never hold.
+// ---------------------------------------------------------------------------
+app.get("/webmcp/support-context", async (c) => {
+  // Same-origin only. The route is excluded from the global wildcard CORS
+  // above, so a cross-origin read is already blocked by the browser; this
+  // rejects it at the server too rather than relying on one layer.
+  const origin = c.req.header("origin");
+  if (origin) {
+    let sameOrigin = false;
+    try {
+      sameOrigin = new URL(origin).host === (c.req.header("host") ?? new URL(c.req.url).host);
+    } catch {
+      sameOrigin = false;
+    }
+    if (!sameOrigin) {
+      return c.json({ ok: false, error: "Cross-origin requests are not permitted." }, 403);
+    }
+  }
+
+  // Bounded input. Repeated ?topics= params and one comma-joined param are
+  // both accepted because agent runtimes serialise array args either way.
+  const rawTopics = c.req.queries("topics") ?? [];
+  const flattened = rawTopics.flatMap((entry) => entry.split(",")).map((t) => t.trim()).filter(Boolean);
+  const parsed = parseTopics(flattened.length > 0 ? flattened : undefined);
+  if (!parsed.ok) {
+    return c.json({ ok: false, error: parsed.error }, 400);
+  }
+
+  try {
+    const { accountId, customerId } = getOrCreateVisitor(c);
+    await seedVisitorFacts(store, qwen, accountId, customerId);
+    const facts = await store.currentFacts(accountId, customerId, new Date());
+    const payload = buildSupportContext(facts, parsed.topics);
+    return c.json(payload, 200, { "Cache-Control": "no-store" });
+  } catch (err) {
+    // Bounded, actionable, and opaque: no stack, no driver text, no secrets.
+    console.error("[webmcp] support-context failed:", err);
+    return c.json({ ok: false, error: "Support context is temporarily unavailable." }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // HTML UI Routes
 // ---------------------------------------------------------------------------
 
@@ -546,6 +619,10 @@ app.get("/static/brand/:file", (c) => {
   const querySessionId = c.req.query("sessionId");
   const sessionId = querySessionId && querySessionId.trim().length > 0 ? querySessionId.trim() : randomUUID();
   const memoryOn = c.req.query("memory") !== "off";
+  // WebMCP OFF control. `?webmcp=off` means the registration script is never
+  // emitted, so the tool is genuinely absent from the page — not registered
+  // and hidden. the WebMCP spike owns the counterfactual that uses this.
+  const webmcpEnabled = c.req.query("webmcp") !== "off";
   const { qwenConfigured } = capabilityStatus();
 
   try {
@@ -557,7 +634,7 @@ app.get("/static/brand/:file", (c) => {
     const facts = await store.currentFacts(accountId, customerId, new Date());
     const slaFact = facts.find((f) => f.predicate === "sla_tier");
     const slaTier = slaFact ? slaFact.object : null;
-    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured, accountId, customerId), 200, {
+    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured, accountId, customerId, webmcpEnabled), 200, {
       "Cache-Control": "no-store",
     });
   } catch (err) {
