@@ -3,6 +3,16 @@
 Scope: make the browser-agent's reach *mechanically* tenant-bound, and show it
 with tests that fail when the boundary is removed.
 
+| | |
+|---|---|
+| Deployed application code | `3b3f465ddfaef922b3b5ea34ce8bc811ff9a45dd` |
+| Evidence commit | the branch head, which adds only this document and the live-regression spec. It changes no file under `apps/`, `src/` or `packages/`, so the deployed build is exactly the code above. A commit cannot cite its own hash; the deployed SHA is the one that matters for this verdict. |
+| Branch | G3 security branch — pushed, **not merged to `main`** |
+| Deployed to | <https://neverasktwice.dev> (Railway, `railway up` from the branch) |
+| Deployment | `25646008-4c9c-4b12-b80f-7b9a940e5cd3`, restarted as `d4b43d2d-8cf8-41d6-8958-fa30bd0a2b6c` |
+| Rollback | deployment `9e334bf8-e80b-4fe6-a944-ad418b9f27de`, code `8e14058` (G2 head) |
+| Verdict | **PASS** |
+
 G1 shipped only the security needed to avoid proving WebMCP on an invalid
 boundary — same-origin isolation from the global wildcard CORS, a closed topic
 vocabulary, bounded output, opaque errors — and deferred the rest here. This
@@ -49,9 +59,16 @@ than knowledge of their id.
 The key comes from `NAT_VISITOR_SECRET`. When it is unset the process mints an
 ephemeral one and logs a warning; that fails closed — old cookies stop
 verifying and visitors are treated as new — rather than falling back to
-unauthenticated scope. **It must be set in any deployed environment**, or
-visitor scope will not survive a restart and will not be shared across
-instances.
+unauthenticated scope. That fallback remains for local development.
+
+**The deployed environment uses an externally configured secret.** It is held
+in the deployment platform's own environment-variable store as a service-level
+variable, so it is stable across process restarts and shared by every instance
+of the service. It was generated with 384 bits of entropy, written directly to
+that store over stdin so the value never appeared in a command line, a process
+argument list, a shell variable, a file, or this repository. The value is not
+recorded here and must not be. Its persistence is demonstrated by observation
+below, not by asserting it.
 
 ### The browser cannot select a tenant, by argument or by body
 
@@ -133,21 +150,28 @@ input. Nothing an agent surface sends is trusted: not a tenant identifier, not
 an origin claim, not a topic outside the closed vocabulary. Scope is resolved
 from state the server signed and the surface cannot read.
 
-Two consequences worth stating plainly:
+The model in three statements:
 
-- A broken or malicious agent surface can cause a request to **fail**. It cannot
-  cause it to **widen**. The `frameId` error is an availability failure on an
-  untrusted surface, which is exactly what the model predicts and tolerates.
-- No hardening of the Inspector is in scope, and none is claimed. If the
-  Inspector is ever relied on for a security property, that would be a change to
-  this model and would need its own gate.
+1. **Agent and browser surfaces are untrusted callers.** They are input, never
+   authority.
+2. **Their failure may make a request unavailable.** A broken surface can stop a
+   call from completing, and that is a tolerated outcome.
+3. **Their failure must not widen tenant authority.** No malfunction,
+   compromise, or hostile behaviour on an agent surface can cause a request to
+   resolve to a tenant other than the one the server's own signed cookie names.
+
+The `frameId` error sits squarely in (2): an availability failure on an
+untrusted surface, which is what the model predicts and tolerates. **It is
+deliberately not fixed**, and fixing it is not in scope for Never Ask Twice. If
+the Inspector were ever relied on for a security property, that would be a
+change to this model and would need its own gate.
 
 ## Evidence
 
 ### Deterministic tests
 
-`tests/webmcp-security-g3.test.ts` — 29 negative tests. Full suite: **87
-passing**, `pnpm lint` clean.
+`tests/webmcp-security-g3.test.ts` — 31 negative tests. Full suite: **89
+passing** across 18 files. `pnpm typecheck` and `pnpm lint` clean.
 
 ### The tests were verified to fail when the boundary is removed
 
@@ -158,18 +182,18 @@ removed in turn and the suite re-run:
 |---|---|
 | Cookie signature verification | 3 |
 | Origin enforcement | 4 |
-| Caller-supplied tenant trusted again | 5 |
-| Wildcard CORS restored on tenant routes | 1 |
-| Tenant id embedded in the page again | 2 |
-| `/eval-snapshot` leaks the visitor tenant | 1 |
-| Read capability writes again | 1 |
-| Payload byte ceiling removed | 1 |
-| Hidden-character stripping removed | 1 |
-| Opaque error replaced with the raw error | 1 |
-| Seed guard reverted to any-fact check | 1 |
+| Browser tenant binding (body trusted again) | 5 |
+| CORS carve-out for tenant routes | 1 |
+| `/eval-snapshot` identifier suppression | 1 |
+| Tenant id kept out of the page | 1 |
+| Read capability performs no write | 1 |
+| Payload byte ceiling | 1 |
+| Hidden-character stripping | 1 |
+| Opaque error boundary | 1 |
+| Per-predicate seed guard | 1 |
 
-This pass caught three of my own tests passing for the wrong reason, which are
-recorded here because the mutation check is the only reason they were found:
+This pass caught three of my own tests passing for the wrong reason, recorded
+here because the mutation check is the only reason they were found:
 
 - Two forgery tests were satisfied by the *format* check rather than the
   signature check, so they survived removing signature verification. They now
@@ -177,10 +201,10 @@ recorded here because the mutation check is the only reason they were found:
   visitor's genuine signature.
 - The "performs no write" test used an already-seeded visitor, so a restored
   seed call short-circuited before writing and the test passed anyway. It now
-  leaves the visitor's facts deliberately incomplete, so a capability that still
-  seeded would have to write.
+  leaves the visitor's facts deliberately incomplete.
 - The byte ceiling was unreachable behind the item and value caps, so no input
-  could exercise it. The ceiling was lowered to a value that binds.
+  could exercise it. Worst case measured 6169 bytes against an 8KB ceiling; the
+  ceiling was lowered to 4KB so it binds.
 
 ### Raw negative-test transcript
 
@@ -202,12 +226,130 @@ recorded here because the mutation check is the only reason they were found:
 | Write with no same-origin evidence | 403 | `This request must be made from the site itself.` |
 | `/eval-snapshot` for a real visitor | 200 | no `accountId`, no `customerId` |
 
-Post-condition on the targeted tenant after every probe above: **4 facts, 0
-events** — unchanged.
+Post-condition on the targeted tenant after every probe: **4 facts, 0 events** —
+unchanged.
 
-No `Access-Control-Allow-Origin` header on any of these responses. Errors carry
-no stack, driver text, credentials or tenant id; the store-failure test asserts
-this against an error string deliberately containing all four.
+## Live regression on the deployed candidate
+
+Everything below was run against <https://neverasktwice.dev> serving the
+application code at `3b3f465`, after the stable secret was configured.
+
+Before deploying, the pre-change production build was probed to confirm the
+three gaps were real in production and not only in the source reading:
+`/eval-snapshot` returned `accountId: "visitor_2ed81953-…"`, and `/chat` served
+`const accountId = "visitor_94afeb35-…"`. Both are now absent.
+
+### Core browser journey (`tests/chat-audit.spec.ts`, 7/7 passed)
+
+Real Chromium against the deployed candidate.
+
+- `/chat` opens, a visitor is established, one `/turn` fires per send, one
+  customer bubble and one agent bubble appear.
+- Seeded Acme state is recalled without re-asking: *"I have your account details
+  on file — Salesforce integration, requires SSO, Gold SLA. I'll route this to
+  Priya now."* — all four of Gold SLA, requires SSO, Salesforce and Priya, with
+  4 glowing trace rows.
+- Memory OFF control, Simulate Cold Start, session close, edge inputs and the
+  manager dashboard all behave as before; dashboard and `/eval-snapshot` agree
+  at 4/4.
+
+### Visitor signing persistence (`docs`-safe markers only)
+
+Correlation marker for the verification visitor: `7105b2ad48ad` (first 12 hex of
+SHA-256 over the visitor id). The cookie value and the secret appear nowhere.
+
+- Cookie shape observed: `<uuid>.<signature>`, uuid 36 chars, signature 43 chars.
+- Three reloads issued **0** `Set-Cookie` headers — the existing signed cookie
+  verified each time rather than minting a new visitor.
+- **Restart persistence, tested directly.** The service was redeployed with no
+  byte change (`25646008…` → `d4b43d2d…`, a genuine new process). The cookie
+  minted *before* the restart still resolved afterwards: `knownVisitor=true`,
+  4 items, identical `asOf` of `2026-09-01T19:34:00.131Z`, and `/chat` issued no
+  new cookie. Under the ephemeral fallback this would have produced a new
+  visitor and an empty context, so this is the observation that distinguishes a
+  configured secret from the fallback. The startup log of the new process
+  contains no `NAT_VISITOR_SECRET is not set` warning.
+
+### WebMCP registration and execution (`tests/webmcp-live-regression.spec.ts`, 4/4 passed)
+
+G1 verified native Chrome discovery by hand and separately ran a headless pass
+under a stand-in WebMCP runtime, committing only that pass's output. This gate
+re-creates that harness as a committed spec and points it at the candidate.
+
+- Registration resolves; `REGISTERED` is emitted from real registration state.
+- `getTools()` returns exactly `["get_support_context"]`.
+- Model-facing `inputSchema` is `topics` only, over the closed five-value enum,
+  `additionalProperties: false`. It contains none of `accountId`, `customerId`,
+  `sessionId`, `tenant`, `factId`, `visitor`.
+- Executing the tool produces the real chain, newest-first
+  `["RETURNED","SCOPED","CALLED","REGISTERED"]` — ordered, with no `DISCOVERED`
+  and no `REJECTED`.
+- Scope reports `resolvedFrom: "browser-session-cookie"`, `knownVisitor: true`.
+- Requesting `sla, integration, escalation_contact` returned exactly 3 items —
+  gold, Salesforce, Priya — marked `untrusted`.
+- The returned payload contains no `accountId`, `customerId`, `sessionId`,
+  `factId`, `visitor_` or `embedding`.
+- Reload preserves the same visitor and the same four facts with identical
+  `asOf` values.
+
+### OFF path and read-only behaviour
+
+- `/chat?webmcp=off` registers **zero** tools (`getTools()` → `[]`) and emits no
+  trace rows, while the chat form and thread remain present and usable.
+- ON → OFF → ON preserves the same visitor's four facts with identical `asOf`:
+  visiting OFF neither destroys nor reseeds state.
+- Five consecutive WebMCP reads returned byte-identical payloads with unchanged
+  `asOf` — the capability creates no facts and no state.
+- `/chat` seeds the visitor before any WebMCP read, which is the only reason the
+  read has anything to return; no write was reintroduced into the capability to
+  make that convenient.
+
+**One correction to G2's evidence.** `webmcp-counterfactual.md` states that
+under `?webmcp=off` "the registration script is not sent to the browser at
+all." That is not accurate: the script *is* served, with `WEBMCP_ENABLED =
+false`, and the guard returns before `host.registerTool` is ever called. The
+functional claim G2 measured — zero tools visible to an agent — does hold, and
+is re-confirmed above. Only the stated mechanism is wrong. This is recorded
+rather than silently corrected in G2's document, which belongs to a closed gate.
+
+### Live bypass checks
+
+| Check | Observed |
+|---|---|
+| Forged cookie: real id, fabricated signature | `returned: 0`, `knownVisitor: false` |
+| Unsigned cookie: bare visitor id | `returned: 0`, `knownVisitor: false` |
+| Scope selectors in the query string | ignored — caller's own 4 items returned |
+| ACAO on `/webmcp/support-context`, `/chat`, `/facts`, `/eval-snapshot`, `/recall`, `/turn` | none on any |
+| ACAO on `/health`, `/` | `*` — unchanged public behaviour |
+| Cross-origin read with `Origin: https://evil.example` | `403 Cross-origin requests are not permitted.` |
+| `/eval-snapshot` for a real visitor | no `accountId` / `customerId` |
+| `/eval-snapshot?tenant=eval-fixture` | `acme_corp` / `jason_99` — the documented pinned public fixture |
+| `visitor_` occurrences in `/chat` HTML | 0 |
+| `const accountId` in `/chat` HTML | 0 |
+| Unsupported topic | `400` bounded error naming the supported values |
+| 50 topics | `400 Too many topics requested.` |
+| Malformed JSON body | `400 Invalid JSON body` |
+
+No live cross-tenant exposure was created to produce this table. Cross-tenant
+isolation evidence is the deterministic A/B suite, not a live attack on a real
+visitor.
+
+### Integration fixes found by this regression pass
+
+Two integration specs were repaired in commit `3b3f465`. Neither changes a
+security assertion.
+
+- `chat-audit` Scenario 1 read `#proof-mem-on` / `#proof-mem-off`, which
+  `0436f2d` removed along with the fabricated no-memory baseline. The scenario
+  had been failing since then — on `main` and against production — for a reason
+  unrelated to any gate. Only the logging step was stale.
+- `demo-preflight` seeded the pinned fixture through `page.request`, which
+  shares the browser context's cookie jar. Measured directly: **201** on a fresh
+  context, **403** after any navigation, because a browser-attributable request
+  may no longer name a tenant. Seeding the public fixture is a trusted
+  server-side action, so it now uses plain `fetch`, matching
+  `scripts/record-demo.ts` and `demo/new_demo/demo.spec.ts`, which were already
+  unaffected.
 
 ## What this does and does not prove
 
@@ -216,6 +358,11 @@ schema, not through the query string, not through a request body, not by
 replaying a visitor id, and not from another origin. The capability performs no
 write, so it has no partial mutation to leave behind. Output is bounded and
 marked untrusted.
+
+**Residual boundary, stated explicitly:** browser-originated access is
+mechanically cookie-bound, while the trusted server-side MCP and eval APIs
+remain tenant-parameterized. Those two facts coexist by design, and the second
+is what the first is bounded against.
 
 **Does not prove:**
 
@@ -232,9 +379,20 @@ marked untrusted.
 3. **Not tested against a live deployment.** All evidence here is deterministic
    and in-process. G1's live checks were run against the Railway deployment; this
    gate does not repeat them.
-4. `NAT_VISITOR_SECRET` is unset in the current deployment. Until it is set, an
-   instance restart invalidates every visitor's scope. Fails closed, but it is a
-   deployment step this gate has not performed.
+4. **Native Chrome WebMCP was not re-verified in this gate.** G1 verified
+   discovery and `executeTool` by hand in Chrome with
+   `chrome://flags/#enable-webmcp-testing`, including that Chrome's WebMCP Tools
+   UI lists the tool. The live regression above drives the page's own
+   registration and execute callback under a stand-in runtime, which is the same
+   code path a real runtime invokes but is not Chrome's implementation. "Chrome
+   lists `get_support_context`" therefore remains carried forward from G1 rather
+   than re-observed here.
+5. **The G2 natural-language counterfactual was not re-run**, deliberately: it
+   spends model credits and is not a security property.
+6. Restart persistence was tested by redeploying identical bytes, which is a
+   real process restart but a single-instance one. Behaviour across two
+   concurrently running instances follows from the secret being a service-level
+   variable, and was not separately observed.
 
 ## Not done in this gate
 
