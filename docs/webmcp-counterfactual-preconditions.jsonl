@@ -1,0 +1,2 @@
+{"condition":"ON","url":"https://neverasktwice.dev/chat","httpStatus":200,"observedAt":"2026-09-01T15:08:15.070Z","discoverable":["get_support_context"],"count":1,"natEnabled":true,"natRegistered":true,"traceRows":["REGISTERED"],"emptyLabel":"Checking for WebMCP…","siteWorks":true}
+{"condition":"OFF","url":"https://neverasktwice.dev/chat?webmcp=off","httpStatus":200,"observedAt":"2026-09-01T15:08:19.337Z","discoverable":[],"count":0,"natEnabled":false,"natRegistered":false,"traceRows":[],"emptyLabel":"WebMCP disabled for this page (?webmcp=off)","siteWorks":true}
