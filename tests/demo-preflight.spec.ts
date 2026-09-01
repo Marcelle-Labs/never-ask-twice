@@ -27,22 +27,34 @@ test.describe("Never Ask Twice — live demo preflight", () => {
       return;
     }
 
+    // Seeding the pinned public fixture tenant is a trusted server-side action,
+    // not something a browser does, so it goes over plain fetch rather than
+    // `page.request`. `page.request` shares the browser context's cookie jar:
+    // once any page in this context has loaded the site, those calls carry a
+    // visitor cookie, and a browser-attributable request may not name a tenant —
+    // it would be refused with 403. `scripts/record-demo.ts` and
+    // `demo/new_demo/demo.spec.ts` already seed this way.
     const sessionId = `seed-${Date.now()}`;
-    const turnRes = await page.request.post(`${BASE_URL}/turn`, {
-      data: {
+    const jsonHeaders = { "Content-Type": "application/json" };
+    const turnRes = await fetch(`${BASE_URL}/turn`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({
         accountId: ACCOUNT_ID,
         customerId: CUSTOMER_ID,
         sessionId,
         role: "customer",
         message: SETUP_MESSAGE,
         memoryMode: "on",
-      },
+      }),
     });
-    expect(turnRes.ok()).toBeTruthy();
-    const closeRes = await page.request.post(`${BASE_URL}/sessions/${sessionId}/close`, {
-      data: { accountId: ACCOUNT_ID, customerId: CUSTOMER_ID },
+    expect(turnRes.ok).toBeTruthy();
+    const closeRes = await fetch(`${BASE_URL}/sessions/${sessionId}/close`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ accountId: ACCOUNT_ID, customerId: CUSTOMER_ID }),
     });
-    expect(closeRes.ok()).toBeTruthy();
+    expect(closeRes.ok).toBeTruthy();
     const closeBody = await closeRes.json();
     expect(closeBody.distillationStatus).toBe("complete");
 

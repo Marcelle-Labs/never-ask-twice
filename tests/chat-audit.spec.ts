@@ -31,9 +31,13 @@ test.describe("Chat UI behavioral audit", () => {
     console.log("[audit][S1] Scenario panel SLA line:", slaLine);
 
     await expect(page.locator("#proof-card")).toBeVisible({ timeout: 15_000 });
-    const memOn = await page.locator("#proof-mem-on").textContent();
-    const memOff = await page.locator("#proof-mem-off").textContent();
-    console.log(`[audit][S1] Proof card: with-memory=${memOn} without-memory=${memOff}`);
+    // The card used to show a with-memory/without-memory pair. The
+    // without-memory number was a hardcoded constant presented as a measured
+    // ablation, so 0436f2d removed both and left required-predicate coverage.
+    // This step only logs what the card shows; the scenario's assertions are
+    // below and are unaffected.
+    const coverage = await page.locator("#proof-coverage").textContent();
+    console.log(`[audit][S1] Proof card coverage: ${coverage}`);
 
     const customerBefore = await page.locator("#chat-thread .message.customer").count();
     const agentBefore = await page.locator("#chat-thread .message.agent").count();
