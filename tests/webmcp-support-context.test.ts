@@ -201,7 +201,19 @@ describe("webmcp server capability scope", () => {
 
     for (const item of body.context) {
       expect(SUPPORT_CONTEXT_TOPICS).toContain(item.topic);
-      expect(Object.keys(item).sort()).toEqual(["asOf", "confidence", "label", "topic", "value"]);
+      expect(Object.keys(item).sort()).toEqual(["asOf", "label", "topic", "value"]);
+    }
+  });
+
+  it("omits the uncalibrated confidence number from the model-facing payload", async () => {
+    const { app } = makeApp();
+    const res = await app.fetch(new Request("http://localhost/webmcp/support-context"));
+    const body = await res.json();
+
+    expect(body.context.length).toBeGreaterThan(0);
+    expect(JSON.stringify(body)).not.toContain("confidence");
+    for (const item of body.context) {
+      expect(item).not.toHaveProperty("confidence");
     }
   });
 

@@ -51,7 +51,6 @@ export interface SupportContextItem {
   topic: SupportContextTopic;
   label: string;
   value: string;
-  confidence: number;
   asOf: string;
 }
 
@@ -142,11 +141,15 @@ export function buildSupportContext(
   for (const fact of facts) {
     const topic = topicForPredicate(fact.predicate);
     if (!topic || !requested.has(topic)) continue;
+    // No confidence field. For seeded facts it is a hardcoded literal and for
+    // distilled facts it is the model's own self-reported number; neither is a
+    // calibrated measurement. The fact store UI dropped it for exactly that
+    // reason, and a tool result read by another model is the last place that
+    // should assert precision this system does not have.
     items.push({
       topic,
       label: TOPIC_LABELS[topic],
       value: clamp(fact.object),
-      confidence: Math.round(fact.confidence * 100) / 100,
       asOf: fact.validFrom.toISOString(),
     });
   }
