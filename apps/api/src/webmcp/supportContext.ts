@@ -46,6 +46,16 @@ const TOPIC_LABELS: Record<SupportContextTopic, string> = {
 /** Output bounds. Bounded input and output. */
 export const MAX_CONTEXT_ITEMS = 20;
 export const MAX_VALUE_CHARS = 200;
+/**
+ * Total serialized ceiling. Item count and per-value length alone do not bound
+ * the response usefully: 20 items of 200 characters serialize to about 6.2KB,
+ * so a ceiling above that would never engage and would be decoration rather
+ * than a limit. 4KB binds on genuinely large context while leaving an ordinary
+ * visitor's handful of short facts (under 1KB) untouched. Items are dropped
+ * from the tail until the payload fits, and the drop is reported as
+ * `truncated` rather than passed off as a complete answer.
+ */
+export const MAX_PAYLOAD_BYTES = 4 * 1024;
 
 export interface SupportContextItem {
   topic: SupportContextTopic;
@@ -121,8 +131,26 @@ function topicForPredicate(predicate: string): SupportContextTopic | null {
   return null;
 }
 
+/**
+ * Characters that carry text an agent reads but a human reviewing the fact
+ * store does not see: C0/C1 controls, zero-width joiners and spaces, and the
+ * bidi override and isolate range. Stored support memory is customer-authored,
+ * so these are removed before the value is handed to a model.
+ *
+ * This is not a prompt-injection defense and must not be described as one.
+ * Plainly visible instruction text survives it untouched, by design — the
+ * boundary for that is `contentTrust`, which marks every value as data. This
+ * only removes the invisible channel, so what the model reads is what a person
+ * auditing the fact store would read.
+ */
+const HIDDEN_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+
+function neutralize(value: string): string {
+  return value.replace(HIDDEN_CHARACTERS, "").replace(/\s+/g, " ");
+}
+
 function clamp(value: string): string {
-  const trimmed = value.trim();
+  const trimmed = neutralize(value).trim();
   return trimmed.length > MAX_VALUE_CHARS ? `${trimmed.slice(0, MAX_VALUE_CHARS - 1)}…` : trimmed;
 }
 
@@ -158,20 +186,35 @@ export function buildSupportContext(
   const order = new Map(SUPPORT_CONTEXT_TOPICS.map((t, i) => [t, i]));
   items.sort((a, b) => (order.get(a.topic)! - order.get(b.topic)!) || a.value.localeCompare(b.value));
 
-  const truncated = items.length > MAX_CONTEXT_ITEMS;
-  const bounded = truncated ? items.slice(0, MAX_CONTEXT_ITEMS) : items;
+  let truncated = items.length > MAX_CONTEXT_ITEMS;
+  let bounded = truncated ? items.slice(0, MAX_CONTEXT_ITEMS) : items;
 
-  return {
+  const compose = (context: SupportContextItem[], wasTruncated: boolean): SupportContextPayload => ({
     ok: true,
-    scope: { resolvedFrom: "browser-session-cookie", knownVisitor: bounded.length > 0 },
+    scope: { resolvedFrom: "browser-session-cookie", knownVisitor: context.length > 0 },
     topics,
-    context: bounded,
-    returned: bounded.length,
-    truncated,
+    context,
+    returned: context.length,
+    truncated: wasTruncated,
     contentTrust: {
       level: "untrusted",
       kind: "customer-authored-or-model-distilled",
       note: UNTRUSTED_CONTENT_NOTE,
     },
-  };
+  });
+
+  // Drop from the tail until the serialized payload fits the byte ceiling. The
+  // envelope itself is small and fixed, so this terminates at worst with an
+  // empty context rather than emitting an unbounded response.
+  let payload = compose(bounded, truncated);
+  while (
+    bounded.length > 0 &&
+    Buffer.byteLength(JSON.stringify(payload), "utf8") > MAX_PAYLOAD_BYTES
+  ) {
+    bounded = bounded.slice(0, bounded.length - 1);
+    truncated = true;
+    payload = compose(bounded, truncated);
+  }
+
+  return payload;
 }

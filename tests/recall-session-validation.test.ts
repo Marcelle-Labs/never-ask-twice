@@ -3,13 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../apps/api/src/server.js";
 import { MemoryService } from "../src/memory/service.js";
 import { InMemoryMemoryStore } from "../src/memory/store.js";
-import { FakeQwenClient } from "./helpers.js";
-
-function parseVisitorCookie(setCookie: string | null): string | null {
-  if (!setCookie) return null;
-  const match = setCookie.match(/nat_visitor=([^;]+)/);
-  return match ? match[1] : null;
-}
+import { FakeQwenClient, parseVisitorCookie, visitorTenant } from "./helpers.js";
 
 function makeApp() {
   const store = new InMemoryMemoryStore();
@@ -108,22 +102,19 @@ describe("seedVisitorFacts-concurrency-safety", () => {
   it("does not duplicate facts when called twice for the same tenant (check-then-act guard)", async () => {
     const { app, store, qwen } = makeApp();
 
-    // Simulate two concurrent first-loads: both get the same cookie
-    const cookie = "shared-cookie-id";
+    // Simulate two concurrent first-loads: both carry the same signed cookie.
+    // It has to be a real minted value — an unsigned string is no longer a
+    // tenant at all, which is the point of the signed-cookie change.
+    const first = await app.fetch(new Request("http://localhost/chat"));
+    const cookie = parseVisitorCookie(first.headers.get("set-cookie"))!;
 
-    // Both requests hit /chat with the same cookie
-    await app.fetch(
-      new Request("http://localhost/chat", {
-        headers: { Cookie: `nat_visitor=${cookie}` },
-      }),
-    );
     await app.fetch(
       new Request("http://localhost/chat", {
         headers: { Cookie: `nat_visitor=${cookie}` },
       }),
     );
 
-    const acct = `visitor_${cookie}`;
+    const acct = visitorTenant(cookie);
     const facts = await store.currentFacts(acct, acct, new Date());
     // Must still be exactly 4 — no duplicates
     expect(facts).toHaveLength(4);

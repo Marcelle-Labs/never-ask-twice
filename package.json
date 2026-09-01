@@ -52,7 +52,8 @@
     "pretest": "pnpm build",
     "start": "node dist/apps/api/src/server.js",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "webmcp:evidence": "tsx scripts/webmcp-security-evidence.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

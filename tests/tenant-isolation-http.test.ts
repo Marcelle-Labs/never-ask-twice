@@ -3,13 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../apps/api/src/server.js";
 import { MemoryService } from "../src/memory/service.js";
 import { InMemoryMemoryStore } from "../src/memory/store.js";
-import { FakeQwenClient } from "./helpers.js";
-
-function parseVisitorCookie(setCookie: string | null): string | null {
-  if (!setCookie) return null;
-  const match = setCookie.match(/nat_visitor=([^;]+)/);
-  return match ? match[1] : null;
-}
+import { FakeQwenClient, parseVisitorCookie, visitorTenant } from "./helpers.js";
 
 function makeApp() {
   const store = new InMemoryMemoryStore();
@@ -35,8 +29,8 @@ describe("tenant-isolation-http", () => {
 
     expect(visitorId1).not.toBe(visitorId2);
 
-    const acct1 = `visitor_${visitorId1}`;
-    const acct2 = `visitor_${visitorId2}`;
+    const acct1 = visitorTenant(visitorId1!);
+    const acct2 = visitorTenant(visitorId2!);
     const facts1 = await store.currentFacts(acct1, acct1, new Date());
     const facts2 = await store.currentFacts(acct2, acct2, new Date());
 
@@ -51,7 +45,7 @@ describe("tenant-isolation-http", () => {
 
     const res1 = await app.fetch(new Request("http://localhost/chat"));
     const visitorId = parseVisitorCookie(res1.headers.get("set-cookie"))!;
-    const acct = `visitor_${visitorId}`;
+    const acct = visitorTenant(visitorId);
 
     const res2 = await app.fetch(
       new Request("http://localhost/chat", {
@@ -64,7 +58,22 @@ describe("tenant-isolation-http", () => {
     expect(facts).toHaveLength(4);
   });
 
-  it("does not set a new cookie when one already exists", async () => {
+  it("does not set a new cookie when a valid one already exists", async () => {
+    const { app } = makeApp();
+
+    const first = await app.fetch(new Request("http://localhost/chat"));
+    const cookie = parseVisitorCookie(first.headers.get("set-cookie"))!;
+
+    const res = await app.fetch(
+      new Request("http://localhost/chat", {
+        headers: { Cookie: `nat_visitor=${cookie}` },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("re-mints rather than honouring a cookie this server did not sign", async () => {
     const { app } = makeApp();
 
     const res = await app.fetch(
@@ -73,7 +82,12 @@ describe("tenant-isolation-http", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect(res.headers.get("set-cookie")).toBeNull();
+
+    // The forged value is not adopted as a tenant; a fresh signed identity is
+    // issued instead, and the rejected value is never echoed back.
+    const issued = parseVisitorCookie(res.headers.get("set-cookie"));
+    expect(issued).toBeTruthy();
+    expect(issued).not.toContain("existing-id");
   });
 
   it("clears working facts on session close", async () => {
@@ -81,7 +95,7 @@ describe("tenant-isolation-http", () => {
 
     const res = await app.fetch(new Request("http://localhost/chat"));
     const visitorId = parseVisitorCookie(res.headers.get("set-cookie"))!;
-    const acct = `visitor_${visitorId}`;
+    const acct = visitorTenant(visitorId);
 
     const html = await res.text();
     const sessionMatch = html.match(/const sessionId = "([^"]+)"/);
@@ -112,8 +126,11 @@ describe("tenant-isolation-http", () => {
         headers: {
           "Content-Type": "application/json",
           Cookie: `nat_visitor=${visitorId}`,
+          // What the page actually sends. A write must be positively
+          // same-origin, so the header is part of the flow under test.
+          Origin: "http://localhost",
         },
-        body: JSON.stringify({ accountId: acct, customerId: acct }),
+        body: JSON.stringify({}),
       }),
     );
     expect(closeRes.status).toBe(200);
@@ -127,7 +144,7 @@ describe("tenant-isolation-http", () => {
 
     const res = await app.fetch(new Request("http://localhost/chat"));
     const visitorId = parseVisitorCookie(res.headers.get("set-cookie"))!;
-    const acct = `visitor_${visitorId}`;
+    const acct = visitorTenant(visitorId);
 
     const facts = await store.currentFacts(acct, acct, new Date());
     const predicates = facts.map((f) => f.predicate).sort();
@@ -137,20 +154,27 @@ describe("tenant-isolation-http", () => {
   });
 
   it("scopes eval snapshot and facts dashboard to the visitor cookie", async () => {
-    const { app } = makeApp();
+    const { app, store } = makeApp();
 
     const first = await app.fetch(new Request("http://localhost/eval-snapshot"));
     const firstVisitor = parseVisitorCookie(first.headers.get("set-cookie"))!;
     const firstBody = await first.json();
-    expect(firstBody.accountId).toBe(`visitor_${firstVisitor}`);
-    expect(firstBody.customerId).toBe(`visitor_${firstVisitor}`);
     expect(firstBody.factsCount).toBe(4);
+
+    // A visitor's tenant id is not handed back to the browser. Scoping is
+    // asserted through the store instead of through a leaked identifier.
+    expect(firstBody.accountId).toBeUndefined();
+    expect(firstBody.customerId).toBeUndefined();
 
     const second = await app.fetch(new Request("http://localhost/eval-snapshot"));
     const secondVisitor = parseVisitorCookie(second.headers.get("set-cookie"))!;
-    const secondBody = await second.json();
-    expect(secondBody.accountId).toBe(`visitor_${secondVisitor}`);
-    expect(secondBody.accountId).not.toBe(firstBody.accountId);
+    expect(secondVisitor).not.toBe(firstVisitor);
+
+    const firstTenant = visitorTenant(firstVisitor);
+    const secondTenant = visitorTenant(secondVisitor);
+    expect(firstTenant).not.toBe(secondTenant);
+    expect(await store.currentFacts(firstTenant, firstTenant, new Date())).toHaveLength(4);
+    expect(await store.currentFacts(secondTenant, secondTenant, new Date())).toHaveLength(4);
 
     const facts = await app.fetch(
       new Request("http://localhost/facts", {

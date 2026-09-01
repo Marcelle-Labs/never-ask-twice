@@ -26,6 +26,13 @@ import {
   parseTopics,
   SUPPORT_CONTEXT_TOPICS,
 } from "./webmcp/supportContext.js";
+import {
+  enforceSameOrigin,
+  isBrowserOriginated,
+  mintVisitorCookie,
+  tenantForVisitor,
+  verifyVisitorCookie,
+} from "./webmcp/scope.js";
 
 // ---------------------------------------------------------------------------
 // Qwen client - zero-vector fallback when DASHSCOPE_API_KEY is absent
@@ -94,10 +101,16 @@ export async function seedVisitorFacts(
   customerId: string,
 ) {
   const existing = await store.currentFacts(accountId, customerId, new Date());
-  if (existing.length > 0) return;
+  // Per-predicate rather than "any fact exists". A seed interrupted partway
+  // through used to leave the visitor permanently short of facts, because the
+  // presence of the first fact suppressed every later attempt. `upsertSeedFact`
+  // is idempotent per predicate, so re-running completes a partial seed.
+  const seeded = new Set(existing.map((fact) => fact.predicate));
+  const missing = ACME_FIXTURE_FACTS.filter((fact) => !seeded.has(fact.predicate));
+  if (missing.length === 0) return;
 
   const now = new Date();
-  for (const fact of ACME_FIXTURE_FACTS) {
+  for (const fact of missing) {
     const embedding = await qwen.embed(`${fact.subject} ${fact.predicate} ${fact.object}`);
     await store.upsertSeedFact({
       accountId,
@@ -119,30 +132,82 @@ export async function seedVisitorFacts(
   }
 }
 
+/**
+ * Reads the visitor's tenant from the signed cookie without minting one.
+ * Returns null when the cookie is absent, malformed, or not signed by this
+ * server — an unverifiable value is never a tenant.
+ */
+function resolveVisitor(c: Context): { accountId: string; customerId: string } | null {
+  const visitorId = verifyVisitorCookie(getCookie(c, VISITOR_COOKIE));
+  return visitorId ? tenantForVisitor(visitorId) : null;
+}
+
 function getOrCreateVisitor(c: Context): {
   accountId: string;
   customerId: string;
   isNew: boolean;
 } {
-  const existing = getCookie(c, VISITOR_COOKIE);
-  if (existing) {
-    return { accountId: `visitor_${existing}`, customerId: `visitor_${existing}`, isNew: false };
-  }
-  const newId = randomUUID();
-  // Secure is set whenever the request arrived over HTTPS (behind Railway's
+  const existing = resolveVisitor(c);
+  if (existing) return { ...existing, isNew: false };
+
+  const { visitorId, cookieValue } = mintVisitorCookie();
+  // Secure is set whenever the request arrived over HTTPS (behind the platform
   // proxy the scheme shows up in x-forwarded-proto, not in the request URL).
   const forwardedProto = c.req.header("x-forwarded-proto");
   const isHttps = forwardedProto
     ? forwardedProto.split(",")[0].trim() === "https"
     : new URL(c.req.url).protocol === "https:";
-  setCookie(c, VISITOR_COOKIE, newId, {
+  setCookie(c, VISITOR_COOKIE, cookieValue, {
     httpOnly: true,
     secure: isHttps,
     sameSite: "Lax",
     maxAge: 60 * 60 * 24 * 365,
     path: "/",
   });
-  return { accountId: `visitor_${newId}`, customerId: `visitor_${newId}`, isNew: true };
+  return { ...tenantForVisitor(visitorId), isNew: true };
+}
+
+type TenantResolution =
+  | { ok: true; accountId: string; customerId: string }
+  | { ok: false; status: 400 | 403; error: string };
+
+/**
+ * Tenant resolution for the routes that accept `accountId`/`customerId` in a
+ * request body.
+ *
+ * A browser-attributable request may not choose: its scope is the signed
+ * cookie, and a body naming anything else is refused rather than quietly
+ * rewritten, so a probing agent gets an explicit boundary instead of silent
+ * coercion. A caller with direct network access is the trusted server-side API
+ * and keeps today's behaviour; it is bounded instead by having no wildcard CORS
+ * (so no page can reach it cross-origin) and by the page never being told a
+ * tenant id it could replay.
+ */
+function resolveCallerTenant(
+  c: Context,
+  requested: { accountId?: string; customerId?: string },
+): TenantResolution {
+  if (!isBrowserOriginated(c)) {
+    if (!requested.accountId || !requested.customerId) {
+      return { ok: false, status: 400, error: "accountId and customerId are required." };
+    }
+    return { ok: true, accountId: requested.accountId, customerId: requested.customerId };
+  }
+
+  const visitor = resolveVisitor(c);
+  if (!visitor) {
+    return { ok: false, status: 403, error: "No valid visitor session for this request." };
+  }
+  // The page omits these entirely. A browser request that names a tenant is
+  // refused rather than silently rewritten, so a probing agent is told the
+  // boundary exists instead of being handed a success it did not earn.
+  if (
+    (requested.accountId !== undefined && requested.accountId !== visitor.accountId) ||
+    (requested.customerId !== undefined && requested.customerId !== visitor.customerId)
+  ) {
+    return { ok: false, status: 403, error: "Request scope does not match this visitor session." };
+  }
+  return { ok: true, ...visitor };
 }
 
 // ---------------------------------------------------------------------------
@@ -153,14 +218,31 @@ export function createApp(deps: { store: MemoryStore; memory: MemoryService; qwe
   const app = new Hono();
   app.use("*", logger());
 
-  // The global policy is wildcard CORS, which is fine for the existing public
-  // read endpoints but must NOT extend to the WebMCP surface: that route reads
-  // the visitor's own support context out of their cookie, so a wildcard ACAO
-  // would let any origin read it via a credentialed fetch. /webmcp/* is
-  // deliberately left with no CORS headers at all => same-origin only.
+  // Wildcard CORS is fine for genuinely public endpoints (/health, the static
+  // assets, the marketing pages) but must not extend to anything that reads or
+  // writes a tenant's memory. G1 carved out /webmcp/* on that reasoning; the
+  // same reasoning applies to every route that resolves a tenant, whether from
+  // the visitor cookie or from a request body. Those routes are served with no
+  // CORS headers at all, so a cross-origin page cannot read their responses.
+  //
+  // This is the layer that keeps the trusted server-side API — which does still
+  // accept tenant identifiers by design, for the MCP server and the eval
+  // harness — out of reach of anything running in a browser.
+  const TENANT_SCOPED_PREFIXES = [
+    "/webmcp/",
+    "/turn",
+    "/recall",
+    "/sessions/",
+    "/chat",
+    "/facts",
+    "/eval-snapshot",
+  ];
+  const isTenantScoped = (path: string) =>
+    TENANT_SCOPED_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix));
+
   const globalCors = cors();
   app.use("*", async (c, next) => {
-    if (c.req.path.startsWith("/webmcp/")) return next();
+    if (isTenantScoped(c.req.path)) return next();
     return globalCors(c, next);
   });
 
@@ -271,8 +353,12 @@ Built by Qwynn Marcelle for the Qwen Cloud Global AI Hackathon (Track: MemoryAge
 // Auto-creates session on first turn. Runs support agent for customer turns.
 // ---------------------------------------------------------------------------
 const TurnBodySchema = z.object({
-  accountId: z.string().min(1),
-  customerId: z.string().min(1),
+  // Optional because the browser must not send them: the page omits them and
+  // the server derives scope from the signed cookie. A server-side caller still
+  // supplies both, and `resolveCallerTenant` rejects a request that has neither
+  // a session nor identifiers.
+  accountId: z.string().min(1).optional(),
+  customerId: z.string().min(1).optional(),
   sessionId: z.string().optional(),
   role: z.enum(["customer", "agent"]),
   message: z.string().min(1),
@@ -293,7 +379,20 @@ app.post("/turn", async (c) => {
     return c.json({ error: "Validation error", issues: parsed.error.issues }, 400);
   }
 
-  const { accountId, customerId, role, message } = parsed.data;
+  // A browser-attributable caller may not name a tenant; scope comes from the
+  // signed cookie. This is a mutation, so the origin must be positively
+  // same-origin rather than merely not-declared-otherwise.
+  const originVerdict = enforceSameOrigin(c, "mutation");
+  if (!originVerdict.ok && isBrowserOriginated(c)) {
+    return c.json({ error: originVerdict.error }, 403);
+  }
+  const scope = resolveCallerTenant(c, parsed.data);
+  if (!scope.ok) {
+    return c.json({ error: scope.error }, scope.status);
+  }
+
+  const { accountId, customerId } = scope;
+  const { role, message } = parsed.data;
   const sessionId = parsed.data.sessionId ?? randomUUID();
   const ts = parsed.data.ts ? new Date(parsed.data.ts) : new Date();
   if (Number.isNaN(ts.getTime())) {
@@ -357,8 +456,8 @@ app.post("/turn", async (c) => {
 // Triggers distillation of episodic events -> semantic facts.
 // ---------------------------------------------------------------------------
 const CloseBodySchema = z.object({
-  accountId: z.string().min(1),
-  customerId: z.string().min(1),
+  accountId: z.string().min(1).optional(),
+  customerId: z.string().min(1).optional(),
   closedAt: z.string().optional(),
 });
 
@@ -377,7 +476,16 @@ app.post("/sessions/:id/close", async (c) => {
     return c.json({ error: "Validation error", issues: parsed.error.issues }, 400);
   }
 
-  const { accountId, customerId } = parsed.data;
+  const closeOrigin = enforceSameOrigin(c, "mutation");
+  if (!closeOrigin.ok && isBrowserOriginated(c)) {
+    return c.json({ error: closeOrigin.error }, 403);
+  }
+  const closeScope = resolveCallerTenant(c, parsed.data);
+  if (!closeScope.ok) {
+    return c.json({ error: closeScope.error }, closeScope.status);
+  }
+
+  const { accountId, customerId } = closeScope;
   const closedAt = parsed.data.closedAt ? new Date(parsed.data.closedAt) : new Date();
   if (Number.isNaN(closedAt.getTime())) {
     return c.json({ error: "Invalid closedAt date" }, 400);
@@ -408,8 +516,8 @@ app.post("/sessions/:id/close", async (c) => {
 // Body: { accountId, customerId, sessionId?, query, tokenBudget? }
 // ---------------------------------------------------------------------------
 const RecallBodySchema = z.object({
-  accountId: z.string().min(1),
-  customerId: z.string().min(1),
+  accountId: z.string().min(1).optional(),
+  customerId: z.string().min(1).optional(),
   sessionId: z.string().optional(),
   query: z.string().min(1),
   tokenBudget: z.number().int().positive().optional(),
@@ -428,7 +536,21 @@ app.post("/recall", async (c) => {
     return c.json({ error: "Validation error", issues: parsed.error.issues }, 400);
   }
 
-  const { accountId, customerId, sessionId, query } = parsed.data;
+  // A read, so `Origin` need only be absent-or-matching; but a browser caller
+  // still cannot select a tenant. Without this, a page script that learned any
+  // tenant id could read that tenant's memory straight out of the browser,
+  // which would make the WebMCP argument surface cosmetic.
+  const recallOrigin = enforceSameOrigin(c, "read");
+  if (!recallOrigin.ok) {
+    return c.json({ error: recallOrigin.error }, 403);
+  }
+  const recallScope = resolveCallerTenant(c, parsed.data);
+  if (!recallScope.ok) {
+    return c.json({ error: recallScope.error }, recallScope.status);
+  }
+
+  const { accountId, customerId } = recallScope;
+  const { sessionId, query } = parsed.data;
   const envBudget = Number(process.env.MEMORY_TOKEN_BUDGET ?? 1200);
   const tokenBudget = parsed.data.tokenBudget ?? (Number.isNaN(envBudget) || envBudget <= 0 ? 1200 : envBudget);
   const now = new Date();
@@ -513,18 +635,11 @@ app.get("/recall", async (c) => {
 app.get("/webmcp/support-context", async (c) => {
   // Same-origin only. The route is excluded from the global wildcard CORS
   // above, so a cross-origin read is already blocked by the browser; this
-  // rejects it at the server too rather than relying on one layer.
-  const origin = c.req.header("origin");
-  if (origin) {
-    let sameOrigin = false;
-    try {
-      sameOrigin = new URL(origin).host === (c.req.header("host") ?? new URL(c.req.url).host);
-    } catch {
-      sameOrigin = false;
-    }
-    if (!sameOrigin) {
-      return c.json({ ok: false, error: "Cross-origin requests are not permitted." }, 403);
-    }
+  // rejects it at the server too rather than relying on one layer. Shared with
+  // the other tenant-scoped routes so there is one origin rule, not several.
+  const originVerdict = enforceSameOrigin(c, "read");
+  if (!originVerdict.ok) {
+    return c.json({ ok: false, error: originVerdict.error }, 403);
   }
 
   // Bounded input. Repeated ?topics= params and one comma-joined param are
@@ -537,9 +652,20 @@ app.get("/webmcp/support-context", async (c) => {
   }
 
   try {
-    const { accountId, customerId } = getOrCreateVisitor(c);
-    await seedVisitorFacts(store, qwen, accountId, customerId);
-    const facts = await store.currentFacts(accountId, customerId, new Date());
+    // Read-only, and mechanically so. This capability is annotated
+    // `readOnlyHint: true`, and it used to call `seedVisitorFacts` — a
+    // four-fact write loop. An abort partway through that loop left the
+    // visitor permanently short of facts, so a "read" tool owned a
+    // partial-mutation window. The route now performs no write at all; the
+    // visitor is seeded when they load /chat, which is also the only place the
+    // tool can be registered, so the capability still has facts to return.
+    //
+    // No cookie is minted here either: a caller with no session reads an empty
+    // context rather than being issued a tenant by a read.
+    const visitor = resolveVisitor(c);
+    const facts = visitor
+      ? await store.currentFacts(visitor.accountId, visitor.customerId, new Date())
+      : [];
     const payload = buildSupportContext(facts, parsed.topics);
     return c.json(payload, 200, { "Cache-Control": "no-store" });
   } catch (err) {
@@ -634,7 +760,7 @@ app.get("/static/brand/:file", (c) => {
     const facts = await store.currentFacts(accountId, customerId, new Date());
     const slaFact = facts.find((f) => f.predicate === "sla_tier");
     const slaTier = slaFact ? slaFact.object : null;
-    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured, accountId, customerId, webmcpEnabled), 200, {
+    return c.html(ChatView(messages, sessionId, memoryOn, slaTier, qwenConfigured, webmcpEnabled), 200, {
       "Cache-Control": "no-store",
     });
   } catch (err) {
@@ -658,12 +784,12 @@ const EVAL_FIXTURE_TENANT = {
 
 async function resolveDashboardTenant(c: Context, store: MemoryStore, qwen: QwenClient) {
   if (c.req.query("tenant") === "eval-fixture") {
-    return EVAL_FIXTURE_TENANT;
+    return { ...EVAL_FIXTURE_TENANT, isFixture: true as const };
   }
 
   const visitor = getOrCreateVisitor(c);
   await seedVisitorFacts(store, qwen, visitor.accountId, visitor.customerId);
-  return { accountId: visitor.accountId, customerId: visitor.customerId };
+  return { accountId: visitor.accountId, customerId: visitor.customerId, isFixture: false as const };
 }
 
 // This endpoint reports required-predicate COVERAGE over the current fact
@@ -674,7 +800,7 @@ async function resolveDashboardTenant(c: Context, store: MemoryStore, qwen: Qwen
 // were false, so both fields are gone. Report what is actually derived from
 // live data and nothing else.
 app.get("/eval-snapshot", async (c) => {
-  const { accountId, customerId } = await resolveDashboardTenant(c, store, qwen);
+  const { accountId, customerId, isFixture } = await resolveDashboardTenant(c, store, qwen);
   const facts = await store.currentFacts(accountId, customerId, new Date());
   const summaries = facts.map((f) => `${f.subject} ${f.predicate} ${f.object}`);
   const missing = REQUIRED_PREDICATES.filter((p) => !summaries.some((s) => s.includes(p)));
@@ -684,8 +810,15 @@ app.get("/eval-snapshot", async (c) => {
     coveredPredicates: REQUIRED_PREDICATES.length - missing.length,
     factsCount: facts.length,
     missingPredicates: missing,
-    accountId,
-    customerId,
+    // A real visitor's tenant id is never returned. The cookie is HttpOnly so
+    // page script cannot read the tenant selector; handing the same identifier
+    // back in a JSON body would undo that, and give anything running on the
+    // page a value to replay against the tenant-parameterized API.
+    //
+    // The pinned eval fixture is a different case: `acme_corp` / `jason_99` are
+    // public fixture constants, not a visitor, and the recording harness reads
+    // them to confirm it is pointed at the fixture.
+    ...(isFixture ? { accountId, customerId } : {}),
   }, 200);
 });
 

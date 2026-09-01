@@ -8,9 +8,10 @@ import {
   buildSupportContext,
   parseTopics,
   MAX_CONTEXT_ITEMS,
+  MAX_PAYLOAD_BYTES,
   SUPPORT_CONTEXT_TOPICS,
 } from "../apps/api/src/webmcp/supportContext.js";
-import { FakeQwenClient } from "./helpers.js";
+import { FakeQwenClient, newVisitor, parseVisitorCookie, type FetchLike } from "./helpers.js";
 
 /**
  * WebMCP spike gate tests. These exist to prove the browser agent cannot select a
@@ -25,10 +26,21 @@ function makeApp(storeOverride?: MemoryStore) {
   return { app: createApp({ store, memory, qwen }), store };
 }
 
-function parseVisitorCookie(setCookie: string | null): string | null {
-  if (!setCookie) return null;
-  const match = setCookie.match(/nat_visitor=([^;]+)/);
-  return match ? match[1] : null;
+/**
+ * The capability is read-only: it neither mints a visitor nor seeds facts. A
+ * browser reaches it only after loading /chat, which is where the tool is
+ * registered and where seeding happens, so the tests take that same path.
+ */
+async function contextFor(
+  app: FetchLike,
+  cookie: string,
+  query = "",
+): Promise<Response> {
+  return app.fetch(
+    new Request(`http://localhost/webmcp/support-context${query}`, {
+      headers: { Cookie: `nat_visitor=${cookie}` },
+    }),
+  );
 }
 
 async function chatHtml(query = ""): Promise<string> {
@@ -168,23 +180,22 @@ describe("webmcp server capability scope", () => {
   it("gives two different visitors two different context sets", async () => {
     const { app, store } = makeApp();
 
-    const a = await app.fetch(new Request("http://localhost/webmcp/support-context"));
-    const cookieA = parseVisitorCookie(a.headers.get("set-cookie"))!;
-    const b = await app.fetch(new Request("http://localhost/webmcp/support-context"));
-    const cookieB = parseVisitorCookie(b.headers.get("set-cookie"))!;
+    const a = await newVisitor(app);
+    const b = await newVisitor(app);
+    expect(a.cookie).not.toBe(b.cookie);
+    expect(a.tenant).not.toBe(b.tenant);
 
-    expect(cookieA).not.toBe(cookieB);
-
-    const factsA = await store.currentFacts(`visitor_${cookieA}`, `visitor_${cookieA}`, new Date());
-    const factsB = await store.currentFacts(`visitor_${cookieB}`, `visitor_${cookieB}`, new Date());
-    expect(factsA.every((f) => f.accountId === `visitor_${cookieA}`)).toBe(true);
-    expect(factsB.every((f) => f.accountId === `visitor_${cookieB}`)).toBe(true);
+    const factsA = await store.currentFacts(a.tenant, a.tenant, new Date());
+    const factsB = await store.currentFacts(b.tenant, b.tenant, new Date());
+    expect(factsA.every((f) => f.accountId === a.tenant)).toBe(true);
+    expect(factsB.every((f) => f.accountId === b.tenant)).toBe(true);
   });
 
   // (5) bounded payload, no raw database identifiers
   it("returns a bounded payload with no raw database identifiers", async () => {
     const { app } = makeApp();
-    const res = await app.fetch(new Request("http://localhost/webmcp/support-context"));
+    const { cookie } = await newVisitor(app);
+    const res = await contextFor(app, cookie);
     const body = await res.json();
     const serialized = JSON.stringify(body);
 
@@ -207,7 +218,8 @@ describe("webmcp server capability scope", () => {
 
   it("omits the uncalibrated confidence number from the model-facing payload", async () => {
     const { app } = makeApp();
-    const res = await app.fetch(new Request("http://localhost/webmcp/support-context"));
+    const { cookie } = await newVisitor(app);
+    const res = await contextFor(app, cookie);
     const body = await res.json();
 
     expect(body.context.length).toBeGreaterThan(0);
@@ -219,9 +231,8 @@ describe("webmcp server capability scope", () => {
 
   it("filters to the requested topics only", async () => {
     const { app } = makeApp();
-    const res = await app.fetch(
-      new Request("http://localhost/webmcp/support-context?topics=sla&topics=escalation_contact"),
-    );
+    const { cookie } = await newVisitor(app);
+    const res = await contextFor(app, cookie, "?topics=sla&topics=escalation_contact");
     const body = await res.json();
     const topics = body.context.map((i: { topic: string }) => i.topic);
     expect(new Set(topics)).toEqual(new Set(["sla", "escalation_contact"]));
@@ -244,7 +255,8 @@ describe("webmcp server capability scope", () => {
   it("keeps the capability same-origin: no wildcard CORS, cross-origin refused", async () => {
     const { app } = makeApp();
 
-    const same = await app.fetch(new Request("http://localhost/webmcp/support-context"));
+    const { cookie } = await newVisitor(app);
+    const same = await contextFor(app, cookie);
     expect(same.headers.get("access-control-allow-origin")).toBeNull();
 
     const cross = await app.fetch(
@@ -267,7 +279,10 @@ describe("webmcp server capability scope", () => {
     };
 
     const { app } = makeApp(failing);
-    const res = await app.fetch(new Request("http://localhost/webmcp/support-context"));
+    // A signed cookie from a healthy app, so the failure happens in the read
+    // rather than short-circuiting on a missing session.
+    const { cookie } = await newVisitor(makeApp().app);
+    const res = await contextFor(app, cookie);
 
     expect(res.status).toBe(500);
     const body = await res.json();
@@ -317,9 +332,18 @@ describe("webmcp payload projection", () => {
     }));
 
     const payload = buildSupportContext(facts as never, [...SUPPORT_CONTEXT_TOPICS]);
-    expect(payload.context).toHaveLength(MAX_CONTEXT_ITEMS);
+    // Three bounds apply, and whichever binds first wins: the item cap, the
+    // per-value clamp, and the total byte ceiling. At this size the byte
+    // ceiling binds before the item cap, so the assertion is the invariant
+    // rather than one exact count.
+    expect(payload.context.length).toBeGreaterThan(0);
+    expect(payload.context.length).toBeLessThanOrEqual(MAX_CONTEXT_ITEMS);
+    expect(payload.returned).toBe(payload.context.length);
     expect(payload.truncated).toBe(true);
     expect(payload.context[0].value.length).toBeLessThanOrEqual(200);
+    expect(Buffer.byteLength(JSON.stringify(payload), "utf8")).toBeLessThanOrEqual(
+      MAX_PAYLOAD_BYTES,
+    );
     expect(JSON.stringify(payload)).not.toContain("fact_0");
   });
 });
