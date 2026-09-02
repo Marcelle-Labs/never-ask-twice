@@ -87,7 +87,9 @@ describe("webmcp registration", () => {
     // exactly one tool is registered by this spike
     const registrations = html.match(/name: 'get_support_context'/g) ?? [];
     expect(registrations).toHaveLength(1);
-    expect(html).not.toContain("update_escalation_contact");
+    // G4 adds a separate bounded mutation; it must not duplicate or widen the
+    // original read capability.
+    expect(html.match(/name: 'update_escalation_contact'/g)).toHaveLength(1);
   });
 
   // (6) WebMCP absence must not break the normal site
