@@ -153,3 +153,45 @@ result. Recorded only as supplemental observation:
 
 No conclusion is drawn from it. It is retained because discarding an
 unsuccessful run would misrepresent the record.
+
+---
+
+## Erratum — OFF-control mechanism (added 2026-09-02, during G3)
+
+Appended, not rewritten. The original text above is left exactly as it was
+recorded; this note corrects one mechanism claim in it.
+
+**Incorrect wording.** Under *Conditions*, this document states:
+
+> The OFF control is a genuine absence, not a hidden tool: the registration
+> script is not sent to the browser at all.
+
+and the condition table describes OFF registration as "script never emitted".
+
+**Corrected mechanism.** The registration script *is* delivered to the browser
+on `/chat?webmcp=off`. It ships with `WEBMCP_ENABLED = false`, and
+`registerWebmcpTool()` returns early — before `host.registerTool` is ever
+called — writing the empty-state label
+`WebMCP disabled for this page (?webmcp=off)`. So the tool is never registered,
+but the script that would register it is present in the page source.
+
+**Measured result unchanged.** Zero registered tools under OFF. That was true
+when G2 measured it via `getTools()` returning `[]`, and it was re-confirmed on
+the G3 build twice: by the committed live-regression spec
+(`tests/webmcp-live-regression.spec.ts`, `getTools()` → `[]`, no trace rows,
+site usable) and by hand in native Chrome on 2026-09-02, where the OFF page
+showed only the disabled label with no `REGISTERED` row while a real support
+turn still recalled all four facts.
+
+**Verdict unchanged.** G2 remains **PASS**. The counterfactual compared tool
+availability, and tool availability was measured, not inferred from the claim
+corrected here. Nothing in the ON/OFF comparison, the caveats, or the
+supplemental record is affected.
+
+**Why this is an erratum and not an edit.** G2 is a closed gate. Rewriting its
+text would make the record of what was believed at the time unrecoverable; the
+distinction between "not sent" and "sent but guarded" only matters to a reader
+reasoning about the mechanism, and that reader is better served by seeing both.
+G2 was not re-run to produce this note.
+
+Full G3 context: [`webmcp-security-g3.md`](webmcp-security-g3.md).
