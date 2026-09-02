@@ -112,6 +112,17 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     </aside>
   </div>
 
+  <div id="webmcp-confirmation" role="dialog" aria-modal="true" aria-labelledby="webmcp-confirmation-title" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:20;align-items:center;justify-content:center;padding:24px;">
+    <div class="card" style="max-width:520px;width:100%;background:var(--surface);border:1px solid var(--border);padding:24px;">
+      <h2 id="webmcp-confirmation-title" style="margin:0 0 12px;">Confirm escalation contact correction</h2>
+      <p id="webmcp-confirmation-copy" style="color:var(--text-muted);line-height:1.5;"></p>
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">
+        <button id="webmcp-confirmation-cancel" class="secondary-btn" type="button">Cancel</button>
+        <button id="webmcp-confirmation-approve" type="button">Confirm and persist</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const sessionId = "${jsStringEscape(sessionId)}";
     // No accountId / customerId. The visitor cookie is HttpOnly so page script
@@ -400,6 +411,9 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       CALLED: 'episodic',
       SCOPED: 'semantic',
       RETURNED: 'semantic',
+      CONFIRMATION_REQUESTED: 'episodic',
+      EXECUTED: 'working',
+      OBSERVED: 'semantic',
       REJECTED: 'error',
       CANCELLED: 'error'
     };
@@ -502,6 +516,81 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       }
     }
 
+    async function correctionProposal(args, signal) {
+      var res = await fetch('/webmcp/escalation-contact/proposal', {
+        method: 'POST', credentials: 'same-origin', signal: signal,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ newContact: args.newContact, reason: args.reason })
+      });
+      var data = null; try { data = await res.json(); } catch (_) {}
+      return { res: res, data: data };
+    }
+
+    function requestEscalationConfirmation(currentContact, proposedContact, signal) {
+      var dialog = document.getElementById('webmcp-confirmation');
+      var copy = document.getElementById('webmcp-confirmation-copy');
+      var approve = document.getElementById('webmcp-confirmation-approve');
+      var cancel = document.getElementById('webmcp-confirmation-cancel');
+      webmcpEvent('CONFIRMATION_REQUESTED', 'Current contact: ' + currentContact + ' → proposed: ' + proposedContact + '. Waiting for explicit user confirmation.');
+      copy.textContent = 'Current escalation contact: ' + currentContact + '. Proposed replacement: ' + proposedContact + '. Confirming will persist this change.';
+      dialog.hidden = false; dialog.style.display = 'flex';
+      return new Promise(function(resolve, reject) {
+        function cleanup() {
+          dialog.hidden = true; dialog.style.display = 'none';
+          approve.onclick = null; cancel.onclick = null;
+          if (signal) signal.removeEventListener('abort', onAbort);
+        }
+        function onAbort() { cleanup(); webmcpEvent('CANCELLED', 'confirmation was cancelled before any mutation'); reject(new DOMException('Aborted', 'AbortError')); }
+        approve.onclick = function() { cleanup(); resolve(true); };
+        cancel.onclick = function() { cleanup(); webmcpEvent('CANCELLED', 'user rejected the confirmation; no change was persisted'); resolve(false); };
+        if (signal) signal.addEventListener('abort', onAbort, { once: true });
+      });
+    }
+
+    async function runEscalationContactTool(args, signal) {
+      webmcpEvent('CALLED', 'update_escalation_contact requested');
+      try {
+        var proposed = await correctionProposal(args || {}, signal);
+        if (!proposed.res.ok || !proposed.data || proposed.data.ok !== true) {
+          var proposalMessage = proposed.data && proposed.data.error ? proposed.data.error : 'Unable to prepare correction.';
+          webmcpEvent('REJECTED', proposalMessage);
+          return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact failed: ' + proposalMessage }] };
+        }
+        var approved = await requestEscalationConfirmation(proposed.data.currentContact, proposed.data.proposedContact, signal);
+        if (!approved) return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact cancelled before persistence.' }] };
+        if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        // Do not attach an AbortSignal after confirmation: a client-side abort
+        // cannot truthfully mean the transaction did not commit. The operation
+        // therefore completes with its post-commit observation.
+        var commitRes = await fetch('/webmcp/escalation-contact/commit', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ confirmationId: proposed.data.confirmationId })
+        });
+        var committed = null; try { committed = await commitRes.json(); } catch (_) {}
+        if (!commitRes.ok || !committed || committed.ok !== true || committed.executed !== true) {
+          var commitMessage = committed && committed.error ? committed.error : 'Escalation contact could not be updated.';
+          webmcpEvent('REJECTED', commitMessage);
+          return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact failed: ' + commitMessage }] };
+        }
+        webmcpEvent('EXECUTED', 'confirmed transaction committed');
+        var reread = await fetchSupportContext(['escalation_contact']);
+        var values = reread.data && reread.data.context ? reread.data.context.map(function(item) { return item.value; }) : [];
+        if (!reread.res.ok || !reread.data || reread.data.ok !== true || values.length !== 1 || values[0] !== proposed.data.proposedContact) {
+          webmcpEvent('REJECTED', 'mutation executed but observation is unavailable or inconsistent');
+          return { isError: true, content: [{ type: 'text', text: 'Escalation contact was updated, but the follow-up observation was unavailable.' }] };
+        }
+        webmcpEvent('OBSERVED', 'independent current-context reread returned the replacement contact');
+        var result = { ok: true, currentContact: values[0], observed: true };
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], structuredContent: result };
+      } catch (err) {
+        if (err && (err.name === 'AbortError' || (signal && signal.aborted))) {
+          webmcpEvent('CANCELLED', 'call aborted before confirmation or transaction start'); throw err;
+        }
+        webmcpEvent('REJECTED', 'transport failure');
+        return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact failed: transport error' }] };
+      }
+    }
+
     var TOOL_DEFINITION = {
       name: 'get_support_context',
       description: TOOL_DESCRIPTION,
@@ -519,14 +608,28 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       }
     };
 
+    var ESCALATION_CONTACT_TOOL_DEFINITION = {
+      name: 'update_escalation_contact',
+      description: 'Propose a replacement for the current visitor’s escalation contact. The visitor must explicitly confirm the displayed current and proposed contacts before the site persists the correction. This tool cannot select a customer or fact.',
+      inputSchema: ${JSON.stringify({ type: "object", properties: { newContact: { type: "string", minLength: 1, maxLength: 120, description: "The confirmed replacement escalation contact." }, reason: { type: "string", maxLength: 240, description: "Optional short reason for the correction." } }, required: ["newContact"], additionalProperties: false })},
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, untrustedContentHint: true },
+      execute: function(args, extra) {
+        var signal = extra && extra.signal ? extra.signal : extra;
+        if (signal && typeof signal.aborted !== 'boolean') signal = undefined;
+        return runEscalationContactTool(args || {}, signal);
+      }
+    };
+
     // Diagnostic surface (section 10): lets a human execute the exact same
     // path from DevTools without a model in the loop.
     window.__natWebmcp = {
       enabled: WEBMCP_ENABLED,
       definition: TOOL_DEFINITION,
+      mutationDefinition: ESCALATION_CONTACT_TOOL_DEFINITION,
       registered: false,
       api: null,
-      call: function (topics) { return runSupportContextTool({ topics: topics || [] }); }
+      call: function (topics) { return runSupportContextTool({ topics: topics || [] }); },
+      updateEscalationContact: function(newContact, reason) { return runEscalationContactTool({ newContact: newContact, reason: reason }); }
     };
 
     (function registerWebmcpTool() {
@@ -560,9 +663,9 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       try {
         var result;
         if (typeof host.registerTool === 'function') {
-          result = host.registerTool(TOOL_DEFINITION);
+          result = Promise.all([host.registerTool(TOOL_DEFINITION), host.registerTool(ESCALATION_CONTACT_TOOL_DEFINITION)]);
         } else if (typeof host.provideContext === 'function') {
-          result = host.provideContext({ tools: [TOOL_DEFINITION] });
+          result = host.provideContext({ tools: [TOOL_DEFINITION, ESCALATION_CONTACT_TOOL_DEFINITION] });
         } else {
           if (webmcpEmptyLabel) webmcpEmptyLabel.textContent = 'WebMCP present but no supported registration method';
           return;
@@ -570,7 +673,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
 
         Promise.resolve(result).then(function () {
           window.__natWebmcp.registered = true;
-          webmcpEvent('REGISTERED', 'get_support_context registered via ' + hostName);
+          webmcpEvent('REGISTERED', 'get_support_context and update_escalation_contact registered via ' + hostName);
         }).catch(function (err) {
           webmcpEvent('REJECTED', 'registration failed: ' + (err && err.message ? err.message : String(err)));
         });
