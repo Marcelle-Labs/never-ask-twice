@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import type {
   EpisodicEventRecord,
+  EscalationContactCorrection,
+  EscalationContactCorrectionResult,
   MemoryStore,
   SemanticFactProvenanceRecord,
   SemanticFactRecord,
@@ -147,6 +149,57 @@ export class InMemoryMemoryStore implements MemoryStore {
     );
     if (!exists) {
       this.semanticFactProvenance.push(record);
+    }
+  }
+
+  async correctEscalationContact(
+    correction: EscalationContactCorrection,
+  ): Promise<EscalationContactCorrectionResult> {
+    const current = this.semanticFacts.filter((fact) =>
+      fact.accountId === correction.accountId &&
+      fact.customerId === correction.customerId &&
+      fact.predicate === "escalation_contact" &&
+      fact.validTo === null,
+    );
+    if (current.length !== 1) throw new Error("Expected one current escalation contact.");
+    const old = current[0]!;
+    if (old.object === correction.newContact) {
+      return { previousContact: old.object, currentContact: old.object, changed: false };
+    }
+
+    // Snapshot all touched collections. The production implementation uses a
+    // database transaction; this gives the test store the equivalent all-or-
+    // nothing behavior and makes stage-failure tests meaningful.
+    const factsSnapshot = this.semanticFacts.map((fact) => ({ ...fact, metadata: { ...fact.metadata } }));
+    const eventsSnapshot = [...this.episodicEvents];
+    const provenanceSnapshot = [...this.semanticFactProvenance];
+    const sessionsSnapshot = new Map(this.sessions);
+    try {
+      const replacementId = randomUUID();
+      const sessionId = `webmcp:${correction.actionId}`;
+      await this.createSession({ sessionId, accountId: correction.accountId, customerId: correction.customerId });
+      const event = await this.appendEvent({
+        accountId: correction.accountId, customerId: correction.customerId, sessionId,
+        role: "agent", message: "Confirmed escalation-contact correction.", ts: correction.now,
+        embedding: [], metadata: { source: "confirmed-webmcp-action", actionId: correction.actionId },
+      });
+      old.validTo = correction.now;
+      old.supersededBy = replacementId;
+      const replacement: SemanticFactRecord = {
+        ...old, factId: replacementId, sessionId, object: correction.newContact,
+        validFrom: correction.now, validTo: null, supersededBy: null,
+        metadata: { source: "confirmed-webmcp-action", actionId: correction.actionId, reason: correction.reason },
+      };
+      await this.insertSemanticFact(replacement);
+      await this.addProvenance({ factId: replacementId, eventId: event.eventId, weight: 1, rationale: "Confirmed WebMCP escalation-contact correction." });
+      return { previousContact: old.object, currentContact: replacement.object, changed: true };
+    } catch (error) {
+      this.semanticFacts.splice(0, this.semanticFacts.length, ...factsSnapshot);
+      this.episodicEvents.splice(0, this.episodicEvents.length, ...eventsSnapshot);
+      this.semanticFactProvenance.splice(0, this.semanticFactProvenance.length, ...provenanceSnapshot);
+      this.sessions.clear();
+      for (const [key, value] of sessionsSnapshot) this.sessions.set(key, value);
+      throw error;
     }
   }
 }
