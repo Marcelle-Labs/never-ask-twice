@@ -1,8 +1,8 @@
 # Alibaba Cloud Function Compute Deployment
 
-Never Ask Twice is designed to deploy to Alibaba Cloud Function Compute (FC) via the root `s.yaml`. **FC is the secondary target but is not the current judge-facing URL** — it's pending Alibaba account verification, not on app readiness. The live, judge-clickable URL today is Railway: see [`deploy/railway.md`](railway.md) and the README Status table. Swapping from Railway to FC once verification clears is a `DATABASE_URL` config change and a redeploy, not a code change.
+Never Ask Twice deploys to Alibaba Cloud Function Compute (FC) via the root `s.yaml`. **FC is deployed and live, but is not the judge-clickable URL.** The proof block below records a full round trip against it, and `/health` still returns `mode: "qwen-live"` (re-verified 2026-09-02). What keeps it from being the demo URL is the platform, not readiness: the free `*.fcapp.run` subdomain forces `Content-Disposition: attachment`, so a browser downloads the response instead of rendering it. Check FC with `curl`; send judges to Railway — see [`deploy/railway.md`](railway.md) and the README Status table.
 
-> Status: deployment instructions are present and verified deployable in shape. Final FC deployment proof (live FC URL plus successful `/health` and Qwen-backed API evidence) is pending Alibaba account verification.
+> Status: deployed and verified live. The proof block below is from a real `s deploy -y` against region `us-east-1`, with a full turn -> close -> recall cycle over the live Neon database and Qwen.
 
 ## Proof of Alibaba Cloud deployment (Devpost submission requirement)
 

@@ -15,7 +15,7 @@ Enterprise Support MemoryAgent on Qwen Cloud
 ![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
 ![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
 
-**Live demo:** [`/chat`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/chat) on Alibaba Function Compute, or hit [`/health`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health) directly — it reports `mode: "qwen-live"` when the Qwen path and database are both configured.
+**Live demo:** [`/chat`](https://neverasktwice.dev/chat) — renders in a browser. [`/health`](https://neverasktwice.dev/health) reports `mode: "qwen-live"` when the Qwen path and database are both configured. The same build also runs on Alibaba Function Compute; that URL is live but must be checked with `curl` rather than a browser (see the Status table).
 
 > The Railway deployment at `neverasktwice.dev` is **no longer running** and the
 > domain returns 404. Alibaba Function Compute is the live path.
@@ -42,8 +42,8 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
 |Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
 |MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
 |Qwen-backed live path|Done|Live on Alibaba FC with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
-|Railway deployment|Retired|`neverasktwice.dev` returned 404 when last checked; the Railway app is gone. [`deploy/railway.md`](deploy/railway.md) is kept as the record of how it was built and verified while it ran.|
-|Alibaba Function Compute deployment|Live — primary|Deployed and serving live Qwen + Postgres. Verify with `curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Note: Alibaba forces `Content-Disposition: attachment` on the default `*.fcapp.run` domain, so a browser downloads the response instead of rendering it — that is the platform's policy for the free subdomain, not a broken deploy. Verify by curl. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
+|Railway deployment|Live — judge-clickable|[`neverasktwice.dev`](https://neverasktwice.dev/chat) serves the app and renders in a browser; re-verified 2026-09-02. This is the URL to click. See [`deploy/railway.md`](deploy/railway.md).|
+|Alibaba Function Compute deployment|Live — verify by curl|Deployed and serving live Qwen + Postgres. Verify with `curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Note: Alibaba forces `Content-Disposition: attachment` on the default `*.fcapp.run` domain, so a browser downloads the response instead of rendering it — that is the platform's policy for the free subdomain, not a broken deploy. Verify by curl. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
 |Demo video|Done|[Watch the demo](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario with eval output.|
 |Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
 
@@ -66,7 +66,7 @@ Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/br
    pnpm mcp:list-tools
    ```
 
-7. Review deployment proof: [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (Alibaba FC — live) and [`deploy/railway.md`](deploy/railway.md) (Railway — retired, kept as the build and verification record).
+7. Review deployment proof: [`deploy/railway.md`](deploy/railway.md) (Railway — live, browser-renderable) and [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (Alibaba FC — live, verify by curl).
 8. Read the build log: [Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit).
 9. Watch the demo: [https://youtu.be/P254DPj-Mgw](https://youtu.be/P254DPj-Mgw).
 
@@ -109,8 +109,8 @@ This is not transcript logging. It is structured memory with retrieval disciplin
 Customer chat / MCP
         |
         v
-Hono API (same code, two deploy targets:
-           Alibaba FC - live | Railway - retired)
+Hono API (same code, two live deploy targets:
+           Railway - browser | Alibaba FC - curl)
         |
         v
 MemoryService
@@ -217,7 +217,7 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 - `eval` — frozen three-session scenario, ground truth, expected output, and runner.
 - `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
 - `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
-- `deploy` — Alibaba Function Compute deployment proof (live) and Railway deployment proof (retired).
+- `deploy` — Railway deployment proof (live, browser-renderable) and Alibaba Function Compute deployment proof (live, verify by curl).
 
 ## Key commands
 

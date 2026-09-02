@@ -1,10 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// The Railway deployment at neverasktwice.dev is retired and the domain 404s.
-// Alibaba Function Compute is the live target.
-const BASE_URL =
-  process.env.DEMO_BASE_URL ??
-  "https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run";
+// neverasktwice.dev (Railway) is the browser-renderable deployment, so it is the
+// default for browser specs. Alibaba FC is also live, but its free *.fcapp.run
+// subdomain forces `Content-Disposition: attachment`, so a browser downloads the
+// response instead of rendering it — pointing Playwright there makes every UI
+// assertion fail for a reason that has nothing to do with the app.
+const BASE_URL = process.env.DEMO_BASE_URL ?? "https://neverasktwice.dev";
 
 export default defineConfig({
   testDir: "./tests",

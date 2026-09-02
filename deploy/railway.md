@@ -1,7 +1,10 @@
-> **Retired.** This Railway deployment is no longer running and
-> `neverasktwice.dev` returns 404. The live deployment is Alibaba Function
-> Compute — see [`alibaba-fc.md`](alibaba-fc.md). This document is kept as the
-> record of how the Railway path was built and verified while it ran.
+> **Live.** `https://neverasktwice.dev` serves this deployment and renders in a
+> browser. Re-verified 2026-09-02: `/health` returns
+> `{"ok":true,...,"mode":"qwen-live"}` over HTTP/2 200.
+>
+> A previous revision of this file declared the deployment retired and the
+> domain a 404. That was wrong — the app was running the whole time — and the
+> claim is corrected rather than deleted so the error stays visible.
 
 # Railway Deployment
 
