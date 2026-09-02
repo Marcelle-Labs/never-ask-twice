@@ -48,6 +48,22 @@ export interface SemanticFactProvenanceRecord {
   rationale: string | null;
 }
 
+/** The only browser-authorized write supported by the memory store. */
+export interface EscalationContactCorrection {
+  accountId: string;
+  customerId: string;
+  newContact: string;
+  reason: string | null;
+  actionId: string;
+  now: Date;
+}
+
+export interface EscalationContactCorrectionResult {
+  previousContact: string;
+  currentContact: string;
+  changed: boolean;
+}
+
 export interface WorkingMemoryRecord extends DistilledFactCandidate {
   sessionId: string;
   accountId: string;
@@ -86,4 +102,12 @@ export interface MemoryStore {
   updateSemanticFact(factId: string, updates: Partial<SemanticFactRecord>): Promise<void>;
 
   addProvenance(record: SemanticFactProvenanceRecord): Promise<void>;
+  /**
+   * Atomically supersede exactly the current escalation contact, add its
+   * replacement, and attach a confirmed-action provenance event. This is not a
+   * generic fact-edit primitive.
+   */
+  correctEscalationContact(
+    correction: EscalationContactCorrection,
+  ): Promise<EscalationContactCorrectionResult>;
 }
