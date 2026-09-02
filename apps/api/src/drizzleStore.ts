@@ -6,6 +6,8 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "../../../src/db/schema.js";
 import type {
   EpisodicEventRecord,
+  EscalationContactCorrection,
+  EscalationContactCorrectionResult,
   MemoryStore,
   SemanticFactProvenanceRecord,
   SemanticFactRecord,
@@ -406,6 +408,73 @@ export class DrizzleMemoryStore implements MemoryStore {
         rationale: record.rationale ?? undefined,
       })
       .onConflictDoNothing();
+  }
+
+  async correctEscalationContact(
+    correction: EscalationContactCorrection,
+  ): Promise<EscalationContactCorrectionResult> {
+    return this.db.transaction(async (tx) => {
+      // Lock the current row before inspecting it. The partial unique index is
+      // the final database invariant; this lock also gives concurrent confirmed
+      // requests a serial current-value transition instead of a racy read.
+      await tx.execute(sql`
+        SELECT fact_id FROM semantic_facts
+        WHERE account_id = ${correction.accountId}
+          AND customer_id = ${correction.customerId}
+          AND predicate = 'escalation_contact'
+          AND valid_to IS NULL
+        FOR UPDATE
+      `);
+      const current = await tx
+        .select()
+        .from(schema.semanticFacts)
+        .where(and(
+          eq(schema.semanticFacts.accountId, correction.accountId),
+          eq(schema.semanticFacts.customerId, correction.customerId),
+          eq(schema.semanticFacts.predicate, "escalation_contact"),
+          isNull(schema.semanticFacts.validTo),
+        ));
+      if (current.length !== 1) throw new Error("Expected one current escalation contact.");
+      const old = current[0]!;
+      if (old.object === correction.newContact) {
+        return { previousContact: old.object, currentContact: old.object, changed: false };
+      }
+
+      const replacementId = randomUUID();
+      const sessionId = `webmcp:${correction.actionId}`;
+      const eventId = randomUUID();
+      // The FK on superseded_by means the old row cannot point at the new row
+      // before it exists. Close it first (inside this transaction), insert the
+      // replacement, then link the history. A failure at any stage rolls the
+      // whole transaction back, including the temporary close.
+      await tx.insert(schema.sessions).values({
+        sessionId, accountId: correction.accountId, customerId: correction.customerId,
+      });
+      await tx.insert(schema.episodicEvents).values({
+        eventId, accountId: correction.accountId, customerId: correction.customerId,
+        sessionId, role: "agent", message: "Confirmed escalation-contact correction.",
+        ts: correction.now, embedding: new Array(1024).fill(0),
+        metadata: { source: "confirmed-webmcp-action", actionId: correction.actionId },
+      });
+      await tx.update(schema.semanticFacts).set({ validTo: correction.now })
+        .where(eq(schema.semanticFacts.factId, old.factId));
+      await tx.insert(schema.semanticFacts).values({
+        factId: replacementId, accountId: old.accountId, customerId: old.customerId,
+        sessionId, subject: old.subject, predicate: old.predicate,
+        predicateClass: old.predicateClass, object: correction.newContact,
+        confidence: old.confidence, adjudicationRationale: old.adjudicationRationale ?? undefined,
+        validFrom: correction.now, metadata: {
+          source: "confirmed-webmcp-action", actionId: correction.actionId, reason: correction.reason,
+        }, embedding: old.embedding as number[],
+      });
+      await tx.update(schema.semanticFacts).set({ supersededBy: replacementId })
+        .where(eq(schema.semanticFacts.factId, old.factId));
+      await tx.insert(schema.semanticFactProvenance).values({
+        factId: replacementId, eventId, weight: 1,
+        rationale: "Confirmed WebMCP escalation-contact correction.",
+      });
+      return { previousContact: old.object, currentContact: correction.newContact, changed: true };
+    });
   }
 
   async clearWorkingFacts(sessionId: string): Promise<void> {
