@@ -33,6 +33,7 @@ import {
   tenantForVisitor,
   verifyVisitorCookie,
 } from "./webmcp/scope.js";
+import { EscalationContactInput } from "./webmcp/escalationContact.js";
 
 // ---------------------------------------------------------------------------
 // Qwen client - zero-vector fallback when DASHSCOPE_API_KEY is absent
@@ -216,6 +217,14 @@ function resolveCallerTenant(
 export function createApp(deps: { store: MemoryStore; memory: MemoryService; qwen: QwenClient }) {
   const { store, memory, qwen } = deps;
   const app = new Hono();
+  // A proposal is deliberately distinct from execution. It contains no tenant
+  // selector and expires quickly; only the page's visible confirmation action
+  // can advance it to the commit endpoint.
+  const pendingCorrections = new Map<string, {
+    accountId: string; customerId: string; newContact: string; reason: string | null;
+    currentContact: string; expiresAt: number; state: "pending" | "committing" | "completed";
+    result?: { previousContact: string; currentContact: string; changed: boolean };
+  }>();
   app.use("*", logger());
 
   // Wildcard CORS is fine for genuinely public endpoints (/health, the static
@@ -672,6 +681,74 @@ app.get("/webmcp/support-context", async (c) => {
     // Bounded, actionable, and opaque: no stack, no driver text, no secrets.
     console.error("[webmcp] support-context failed:", err);
     return c.json({ ok: false, error: "Support context is temporarily unavailable." }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /webmcp/escalation-contact/{proposal,commit}
+//
+// The only browser-facing mutation. Proposal is read-only; commit consumes a
+// short-lived proposal after the page has shown its explicit confirmation UI.
+// Neither request accepts a tenant, fact, predicate, or session selector.
+// ---------------------------------------------------------------------------
+app.post("/webmcp/escalation-contact/proposal", async (c) => {
+  const origin = enforceSameOrigin(c, "mutation");
+  if (!origin.ok) return c.json({ ok: false, error: origin.error }, 403);
+  const visitor = resolveVisitor(c);
+  if (!visitor) return c.json({ ok: false, error: "No valid visitor session for this request." }, 403);
+  let raw: unknown;
+  try { raw = await c.req.json(); } catch { return c.json({ ok: false, error: "Invalid correction request." }, 400); }
+  const parsed = EscalationContactInput.safeParse(raw);
+  if (!parsed.success) return c.json({ ok: false, error: "Invalid correction request." }, 400);
+  try {
+    const contacts = (await store.currentFacts(visitor.accountId, visitor.customerId, new Date()))
+      .filter((fact) => fact.predicate === "escalation_contact");
+    if (contacts.length !== 1) return c.json({ ok: false, error: "Escalation contact is temporarily unavailable." }, 409);
+    const confirmationId = randomUUID();
+    pendingCorrections.set(confirmationId, {
+      ...visitor, newContact: parsed.data.newContact, reason: parsed.data.reason ?? null,
+      currentContact: contacts[0]!.object, expiresAt: Date.now() + 5 * 60_000, state: "pending",
+    });
+    return c.json({ ok: true, confirmationId, currentContact: contacts[0]!.object, proposedContact: parsed.data.newContact }, 200, { "Cache-Control": "no-store" });
+  } catch (error) {
+    console.error("[webmcp] escalation proposal failed:", error);
+    return c.json({ ok: false, error: "Escalation contact is temporarily unavailable." }, 500);
+  }
+});
+
+const CommitCorrection = z.object({ confirmationId: z.string().uuid() }).strict();
+
+app.post("/webmcp/escalation-contact/commit", async (c) => {
+  const origin = enforceSameOrigin(c, "mutation");
+  if (!origin.ok) return c.json({ ok: false, error: origin.error }, 403);
+  const visitor = resolveVisitor(c);
+  if (!visitor) return c.json({ ok: false, error: "No valid visitor session for this request." }, 403);
+  let raw: unknown;
+  try { raw = await c.req.json(); } catch { return c.json({ ok: false, error: "Invalid confirmation." }, 400); }
+  const parsed = CommitCorrection.safeParse(raw);
+  if (!parsed.success) return c.json({ ok: false, error: "Invalid confirmation." }, 400);
+  const pending = pendingCorrections.get(parsed.data.confirmationId);
+  if (!pending || pending.accountId !== visitor.accountId || pending.customerId !== visitor.customerId || pending.expiresAt < Date.now()) {
+    return c.json({ ok: false, error: "Confirmation is no longer available." }, 409);
+  }
+  if (pending.state === "completed" && pending.result) {
+    return c.json({ ok: true, executed: true, replayed: true, currentContact: pending.result.currentContact }, 200, { "Cache-Control": "no-store" });
+  }
+  if (pending.state !== "pending") return c.json({ ok: false, error: "Confirmation is already in progress." }, 409);
+  pending.state = "committing";
+  try {
+    const result = await store.correctEscalationContact({
+      accountId: visitor.accountId, customerId: visitor.customerId,
+      newContact: pending.newContact, reason: pending.reason,
+      actionId: parsed.data.confirmationId, now: new Date(),
+    });
+    pending.state = "completed";
+    pending.result = result;
+    return c.json({ ok: true, executed: true, replayed: false, currentContact: result.currentContact }, 200, { "Cache-Control": "no-store" });
+  } catch (error) {
+    pending.state = "pending";
+    console.error("[webmcp] escalation commit failed:", error);
+    return c.json({ ok: false, error: "Escalation contact could not be updated." }, 500);
   }
 });
 
