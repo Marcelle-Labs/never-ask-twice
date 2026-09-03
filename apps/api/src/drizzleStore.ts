@@ -19,6 +19,29 @@ type Db = NodePgDatabase<typeof schema>;
 
 const MAX_CACHE_SESSIONS = 500;
 
+/**
+ * pgvector rows are returned by `pg` as their textual `[n,n,…]` form unless a
+ * driver type parser is installed. Drizzle's custom vector column only needs a
+ * number array on writes, so preserve an already-parsed value or parse the
+ * database representation before a superseding insert.
+ */
+export function vectorForWrite(value: unknown): number[] {
+  if (Array.isArray(value) && value.every((entry) => typeof entry === "number" && Number.isFinite(entry))) {
+    return value;
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === "number" && Number.isFinite(entry))) {
+        return parsed;
+      }
+    } catch {
+      // The bounded error below is intentionally opaque to the browser route.
+    }
+  }
+  throw new Error("Stored fact embedding is unavailable.");
+}
+
 export class DrizzleMemoryStore implements MemoryStore {
   // In-memory working-facts store keyed by sessionId for O(1) eviction.
   // Bounded by MAX_CACHE_SESSIONS with FIFO overflow eviction.
@@ -465,7 +488,7 @@ export class DrizzleMemoryStore implements MemoryStore {
         confidence: old.confidence, adjudicationRationale: old.adjudicationRationale ?? undefined,
         validFrom: correction.now, metadata: {
           source: "confirmed-webmcp-action", actionId: correction.actionId, reason: correction.reason,
-        }, embedding: old.embedding as number[],
+        }, embedding: vectorForWrite(old.embedding),
       });
       await tx.update(schema.semanticFacts).set({ supersededBy: replacementId })
         .where(eq(schema.semanticFacts.factId, old.factId));
