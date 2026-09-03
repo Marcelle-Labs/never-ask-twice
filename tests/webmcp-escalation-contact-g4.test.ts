@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createApp } from "../apps/api/src/server.js";
+import { vectorForWrite } from "../apps/api/src/drizzleStore.js";
 import { MemoryService } from "../src/memory/service.js";
 import { InMemoryMemoryStore } from "../src/memory/store.js";
 import { FakeQwenClient, newVisitor } from "./helpers.js";
@@ -32,6 +33,11 @@ async function contact(app: ReturnType<typeof makeApp>["app"], cookie: string) {
 }
 
 describe("G4 escalation-contact mutation boundary", () => {
+  it("converts pgvector's deployed textual read representation before replacement insert", () => {
+    expect(vectorForWrite("[0.25,-1,3]")).toEqual([0.25, -1, 3]);
+    expect(() => vectorForWrite("not-a-vector")).toThrow("Stored fact embedding is unavailable.");
+  });
+
   it("registers exactly one bounded mutation schema with no selectors or false idempotence", async () => {
     const { app } = makeApp(); const html = await (await app.fetch(new Request("http://localhost/chat"))).text();
     expect(html.match(/name: 'update_escalation_contact'/g)).toHaveLength(1);
