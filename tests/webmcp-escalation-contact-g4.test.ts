@@ -118,4 +118,20 @@ describe("G4 escalation-contact mutation boundary", () => {
     expect(block).toContain("fetchSupportContext(['escalation_contact'])");
     expect(block.indexOf("webmcpEvent('EXECUTED'")).toBeLessThan(block.indexOf("webmcpEvent('OBSERVED'"));
   });
+
+  it("locks the confirmation surface synchronously until independent observation", async () => {
+    const { app } = makeApp(); const html = await (await app.fetch(new Request("http://localhost/chat"))).text();
+    const block = html.slice(html.indexOf("function requestEscalationConfirmation"), html.indexOf("var TOOL_DEFINITION"));
+    expect(block).toContain("if (committing) return;");
+    expect(block).toContain("committing = true; escalationContactPending = true;");
+    expect(block).toContain("approve.disabled = true; approve.textContent = 'Saving and verifying…';");
+    expect(block).toContain("cancel.disabled = true;");
+    expect(block).toContain("dialog.setAttribute('aria-busy', 'true')");
+    expect(block).toContain("background.inert = true");
+    expect(block).toContain("event.key === 'Escape'");
+    expect(block).toContain("Updated and verified");
+    expect(block.indexOf("webmcpEvent('OBSERVED'")).toBeLessThan(block.indexOf("confirmation.controller.success()"));
+    expect(block.indexOf("webmcpEvent('EXECUTED'")).toBeLessThan(block.indexOf("webmcpEvent('OBSERVED'"));
+    expect(block).toContain("confirmation.controller.failure()");
+  });
 });
