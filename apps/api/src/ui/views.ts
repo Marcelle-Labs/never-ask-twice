@@ -112,10 +112,11 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
     </aside>
   </div>
 
-  <div id="webmcp-confirmation" role="dialog" aria-modal="true" aria-labelledby="webmcp-confirmation-title" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:20;align-items:center;justify-content:center;padding:24px;">
+  <div id="webmcp-confirmation" role="dialog" aria-modal="true" aria-labelledby="webmcp-confirmation-title" aria-busy="false" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:20;align-items:center;justify-content:center;padding:24px;">
     <div class="card" style="max-width:520px;width:100%;background:var(--surface);border:1px solid var(--border);padding:24px;">
       <h2 id="webmcp-confirmation-title" style="margin:0 0 12px;">Confirm escalation contact correction</h2>
       <p id="webmcp-confirmation-copy" style="color:var(--text-muted);line-height:1.5;"></p>
+      <p id="webmcp-confirmation-status" role="status" aria-live="polite" style="min-height:1.5em;color:var(--text-muted);line-height:1.5;"></p>
       <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">
         <button id="webmcp-confirmation-cancel" class="secondary-btn" type="button">Cancel</button>
         <button id="webmcp-confirmation-approve" type="button">Confirm and persist</button>
@@ -526,28 +527,74 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
       return { res: res, data: data };
     }
 
+    var escalationContactPending = false;
+
     function requestEscalationConfirmation(currentContact, proposedContact, signal) {
       var dialog = document.getElementById('webmcp-confirmation');
       var copy = document.getElementById('webmcp-confirmation-copy');
+      var status = document.getElementById('webmcp-confirmation-status');
       var approve = document.getElementById('webmcp-confirmation-approve');
       var cancel = document.getElementById('webmcp-confirmation-cancel');
+      var background = document.querySelector('.app-container');
+      var committing = false;
       webmcpEvent('CONFIRMATION_REQUESTED', 'Current contact: ' + currentContact + ' → proposed: ' + proposedContact + '. Waiting for explicit user confirmation.');
       copy.textContent = 'Current escalation contact: ' + currentContact + '. Proposed replacement: ' + proposedContact + '. Confirming will persist this change.';
+      status.textContent = '';
+      approve.hidden = false; approve.disabled = false; approve.textContent = 'Confirm and persist';
+      cancel.disabled = false; cancel.textContent = 'Cancel';
       dialog.hidden = false; dialog.style.display = 'flex';
       return new Promise(function(resolve, reject) {
         function cleanup() {
           dialog.hidden = true; dialog.style.display = 'none';
-          approve.onclick = null; cancel.onclick = null;
+          dialog.setAttribute('aria-busy', 'false');
+          if (background) { background.inert = false; background.removeAttribute('aria-hidden'); }
+          approve.onclick = null; cancel.onclick = null; dialog.onclick = null;
+          document.removeEventListener('keydown', onKeydown, true);
+          escalationContactPending = false;
           if (signal) signal.removeEventListener('abort', onAbort);
         }
-        function onAbort() { cleanup(); webmcpEvent('CANCELLED', 'confirmation was cancelled before any mutation'); reject(new DOMException('Aborted', 'AbortError')); }
-        approve.onclick = function() { cleanup(); resolve(true); };
+        function onKeydown(event) { if (committing && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); } }
+        function onAbort() {
+          if (committing) return;
+          cleanup(); webmcpEvent('CANCELLED', 'confirmation was cancelled before any mutation'); reject(new DOMException('Aborted', 'AbortError'));
+        }
+        function beginCommit() {
+          if (committing) return;
+          // This transition is synchronous and precedes the async commit call.
+          committing = true; escalationContactPending = true;
+          dialog.setAttribute('aria-busy', 'true');
+          if (background) { background.inert = true; background.setAttribute('aria-hidden', 'true'); }
+          approve.disabled = true; approve.textContent = 'Saving and verifying…';
+          cancel.disabled = true;
+          status.textContent = 'NAT is saving the correction and independently verifying the current contact.';
+          resolve({ approved: true, controller: {
+            success: function() {
+              dialog.setAttribute('aria-busy', 'false');
+              approve.textContent = 'Updated and verified';
+              status.textContent = 'Updated and independently verified.';
+              return new Promise(function(done) { window.setTimeout(function() { cleanup(); done(); }, 800); });
+            },
+            failure: function() {
+              dialog.setAttribute('aria-busy', 'false');
+              approve.hidden = true;
+              cancel.disabled = false; cancel.textContent = 'Close';
+              status.textContent = 'The correction was not verified. No verified success is being shown.';
+              return new Promise(function(done) { cancel.onclick = function() { cleanup(); done(); }; });
+            }
+          }});
+        }
+        approve.onclick = beginCommit;
         cancel.onclick = function() { cleanup(); webmcpEvent('CANCELLED', 'user rejected the confirmation; no change was persisted'); resolve(false); };
+        dialog.onclick = function(event) { if (committing && event.target === dialog) { event.preventDefault(); event.stopPropagation(); } };
+        document.addEventListener('keydown', onKeydown, true);
         if (signal) signal.addEventListener('abort', onAbort, { once: true });
       });
     }
 
     async function runEscalationContactTool(args, signal) {
+      if (escalationContactPending) {
+        return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact is already saving and verifying a correction.' }] };
+      }
       webmcpEvent('CALLED', 'update_escalation_contact requested');
       try {
         var proposed = await correctionProposal(args || {}, signal);
@@ -556,8 +603,8 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
           webmcpEvent('REJECTED', proposalMessage);
           return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact failed: ' + proposalMessage }] };
         }
-        var approved = await requestEscalationConfirmation(proposed.data.currentContact, proposed.data.proposedContact, signal);
-        if (!approved) return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact cancelled before persistence.' }] };
+        var confirmation = await requestEscalationConfirmation(proposed.data.currentContact, proposed.data.proposedContact, signal);
+        if (!confirmation || !confirmation.approved) return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact cancelled before persistence.' }] };
         if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
         // Do not attach an AbortSignal after confirmation: a client-side abort
         // cannot truthfully mean the transaction did not commit. The operation
@@ -570,6 +617,7 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         if (!commitRes.ok || !committed || committed.ok !== true || committed.executed !== true) {
           var commitMessage = committed && committed.error ? committed.error : 'Escalation contact could not be updated.';
           webmcpEvent('REJECTED', commitMessage);
+          await confirmation.controller.failure();
           return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact failed: ' + commitMessage }] };
         }
         webmcpEvent('EXECUTED', 'confirmed transaction committed');
@@ -577,16 +625,19 @@ export const ChatView = (messages: Array<{ role: string; message: string }>, ses
         var values = reread.data && reread.data.context ? reread.data.context.map(function(item) { return item.value; }) : [];
         if (!reread.res.ok || !reread.data || reread.data.ok !== true || values.length !== 1 || values[0] !== proposed.data.proposedContact) {
           webmcpEvent('REJECTED', 'mutation executed but observation is unavailable or inconsistent');
+          await confirmation.controller.failure();
           return { isError: true, content: [{ type: 'text', text: 'Escalation contact was updated, but the follow-up observation was unavailable.' }] };
         }
         webmcpEvent('OBSERVED', 'independent current-context reread returned the replacement contact');
         var result = { ok: true, currentContact: values[0], observed: true };
+        await confirmation.controller.success();
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], structuredContent: result };
       } catch (err) {
         if (err && (err.name === 'AbortError' || (signal && signal.aborted))) {
           webmcpEvent('CANCELLED', 'call aborted before confirmation or transaction start'); throw err;
         }
         webmcpEvent('REJECTED', 'transport failure');
+        if (typeof confirmation !== 'undefined' && confirmation && confirmation.approved) await confirmation.controller.failure();
         return { isError: true, content: [{ type: 'text', text: 'update_escalation_contact failed: transport error' }] };
       }
     }
