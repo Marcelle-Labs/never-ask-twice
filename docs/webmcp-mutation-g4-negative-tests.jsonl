@@ -5,3 +5,4 @@
 {"probe":"failure injection","result":"PASS","stages":["before supersession","replacement insert after close","provenance insert"],"expectation":"rollback keeps one current Priya"}
 {"probe":"retry","result":"PASS","expectation":"completed confirmation replays without second supersession or provenance"}
 {"probe":"readback discipline","result":"PASS","expectation":"client source only emits OBSERVED after a separate scoped support-context reread"}
+{"gate":"G4 focused deterministic suite — re-run at submission freeze","revision":"c293e14cd5400d7bf16e5c5aef13def3a71b905d","command":"pnpm vitest run tests/webmcp-escalation-contact-g4.test.ts tests/webmcp-security-g3.test.ts tests/webmcp-support-context.test.ts","result":"PASS","testFiles":3,"tests":57,"note":"Count moved 55 -> 57: c293e14 added two regression tests for confirmation locking. Earlier 55-test line retained above as the record of the run at 914effc.","observedAt":"2026-09-03T23:31:36-04:00"}

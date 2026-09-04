@@ -32,7 +32,9 @@ The proposal id is an opaque, visitor-bound, five-minute server-side record. A c
 
 ## Deterministic evidence
 
-`tests/webmcp-escalation-contact-g4.test.ts` covers schema selector rejection, origin rejection, missing confirmation, invalid/control input, supersession/current-value semantics, provenance, retry, other-visitor isolation, injected failures before close/after close/provenance, and trace ordering/readback. The focused G4 + G3 + support-context run reports **55 passing tests**.
+`tests/webmcp-escalation-contact-g4.test.ts` covers schema selector rejection, origin rejection, missing confirmation, invalid/control input, supersession/current-value semantics, provenance, retry, other-visitor isolation, injected failures before close/after close/provenance, and trace ordering/readback. The focused G4 + G3 + support-context run reports **57 passing tests** at the submitted revision `c293e14`.
+
+> **Erratum (2026-09-03, submission freeze).** This document originally recorded **55**, the count at the time G4 first landed (`914effc`). The follow-up fix `c293e14` — *lock confirmation while verifying* — added two regression tests, bringing the focused suite to 57. The frozen `*-negative-tests.jsonl` retains its original 55-test line as the record of that earlier run; a second line records the re-run at the submitted revision. Neither count is corrected retroactively.
 
 The mutation verification test deliberately injects failures in `createSession`, replacement insertion (after the old row is closed), and provenance insertion. Each returns an opaque failure, preserves Priya as the sole current contact, and leaves no replacement visible.
 

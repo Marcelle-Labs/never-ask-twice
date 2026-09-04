@@ -2,83 +2,167 @@
 
 ![Never Ask Twice](docs/assets/brand/README-hero.png)
 
-**Support that remembers.**
+**The website already knows the answer. The browser agent can't reach it — until the site hands it over.**
 
-Enterprise Support MemoryAgent on Qwen Cloud
-
-![CI](https://github.com/Marcelle-Labs/never-ask-twice/actions/workflows/ci.yml/badge.svg)
-![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+![WebMCP](https://img.shields.io/badge/WebMCP-2%20browser%20tools-black)
+![Entry](https://img.shields.io/badge/Entry-Existing%20project%2C%20extended-purple)
 ![Runtime](https://img.shields.io/badge/Runtime-Node.js%2020-green)
-![Cloud](https://img.shields.io/badge/Cloud-Alibaba%20FC%20(live)-brightgreen)
-![Model](https://img.shields.io/badge/Model-Qwen%20Cloud-purple)
-![Memory](https://img.shields.io/badge/Memory-Working%20%7C%20Episodic%20%7C%20Semantic-black)
-![MCP](https://img.shields.io/badge/MCP-4%20tools-black)
+![Live](https://img.shields.io/badge/Live-neverasktwice.dev-brightgreen)
 
-**Live demo:** [`/chat`](https://neverasktwice.dev/chat) — renders in a browser. [`/health`](https://neverasktwice.dev/health) reports `mode: "qwen-live"` when the Qwen path and database are both configured. The same build also runs on Alibaba Function Compute; that URL is live but must be checked with `curl` rather than a browser (see the Status table).
+**Live:** **<https://neverasktwice.dev/chat>** — renders in any browser. WebMCP tools register automatically in a WebMCP-capable browser. Add `?webmcp=off` to the same URL for the control condition.
 
-> The Railway deployment at `neverasktwice.dev` is **no longer running** and the
-> domain returns 404. Alibaba Function Compute is the live path.
+---
 
-Customers don't want a smarter chatbot if they still have to repeat their SLA, setup, open issue, and escalation contact every time they come back.
+## The 15-second version
 
-Never Ask Twice is a production-shaped B2B support memory agent that remembers customer context across sessions, retrieves only the memories that matter, forgets stale facts safely, and proves improvement with a deterministic memory ON/OFF evaluation harness plus a live Qwen-backed API path.
+A support site holds real context about the person visiting it: their service
+level, their integrations, their open issue, who they escalate to.
 
-The demo agent is **Nat**. Nat is powered by **NATE** — the Never Ask Twice Engine — a scoped memory layer that turns support conversations into durable, auditable customer context.
+A browser agent standing on that same page cannot reliably use any of it. It
+scrapes, it guesses, or it gives up and **asks the human to type it in again** —
+the exact thing the person came to the site to avoid.
 
-Built for the Qwen Cloud Global AI Hackathon — Track: MemoryAgent.
+WebMCP closes that gap. The site declares typed, authorized capabilities; the
+agent discovers and calls them.
 
-## Brand assets
-
-Official logo files and usage rules live in [`docs/assets/brand`](docs/assets/brand). The public tagline is **Support that remembers.** Descriptor: **Enterprise Support MemoryAgent.**
-
-## Status
-
-|Area|Status|Notes|
+| | Before this challenge | What the challenge window added |
 |---|---|---|
-|Public clean-room repo|Done|Synthetic data only; boundary scan included.|
-|Local Postgres + pgvector setup|Done|`docker compose up -d` binds Postgres on `localhost:5433`.|
-|Deterministic eval harness|Done|`pnpm eval` prints memory ON/OFF re-ask and recall metrics.|
-|Memory service|Done|Working, episodic, semantic, forgetting, and budgeted recall paths are implemented.|
-|MCP stdio surface|Done|Four memory tools are exposed through `pnpm mcp:list-tools`.|
-|Qwen-backed live path|Done|Live on Alibaba FC with `DASHSCOPE_API_KEY` set; `/health` reports `mode: "qwen-live"`.|
-|Railway deployment|Live — judge-clickable|[`neverasktwice.dev`](https://neverasktwice.dev/chat) serves the app and renders in a browser; re-verified 2026-09-02. This is the URL to click. See [`deploy/railway.md`](deploy/railway.md).|
-|Alibaba Function Compute deployment|Live — verify by curl|Deployed and serving live Qwen + Postgres. Verify with `curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Note: Alibaba forces `Content-Disposition: attachment` on the default `*.fcapp.run` domain, so a browser downloads the response instead of rendering it — that is the platform's policy for the free subdomain, not a broken deploy. Verify by curl. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
-|Demo video|Done|[Watch the demo](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario with eval output.|
-|Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
+| **Existed** | A support memory engine — working / episodic / semantic tiers, forgetting, budgeted recall — behind a chat UI and a **stdio** MCP server | — |
+| **Reachable by a browser agent** | No. Context lived server-side behind a chat box. | **Yes.** Two typed WebMCP tools on `document.modelContext` |
+| **Agent can read context** | Falls back to page inspection, then asks the human | Calls `get_support_context`, answers directly |
+| **Agent can correct context** | Not possible | `update_escalation_contact`, gated on explicit human confirmation |
+| **Tenant safety** | Convention | Mechanism — server-side scope, signed cookie, no model-supplied selectors |
 
-## Judge path
+The pre-existing stdio MCP server is **not** WebMCP. It is a separate,
+non-browser surface that predates this challenge. Everything scored here is the
+browser-native work listed in the right column.
 
-1. Try the live deployment on Alibaba Function Compute: [`/chat`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/chat) for the UI, [`/health`](https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health) for capability status.
-2. Read the memory model: [`docs/memory-model.md`](docs/memory-model.md).
-3. Run the ablation:
+## The two tools
 
-   ```bash
-   pnpm eval
-   ```
+Both are registered on the page via `document.modelContext.registerTool`.
+Neither accepts an account, customer, tenant, or session selector — scope is
+resolved server-side from a signed visitor cookie, so **the model cannot name
+whose data it wants**.
 
-4. Inspect the forgetting behavior: [`docs/forgetting-policy.md`](docs/forgetting-policy.md).
-5. Read the system architecture: [`docs/architecture.md`](docs/architecture.md).
-6. List MCP tools:
+| Tool | Kind | Arguments | Boundary |
+|---|---|---|---|
+| `get_support_context` | read | `topics[]` from a closed five-value vocabulary, optional | `readOnlyHint`, bounded output, result marked `untrusted` |
+| `update_escalation_contact` | mutate | `newContact`, optional `reason` | Requires an explicit human **Confirm and persist** click; atomic supersession; independent readback before success is reported |
 
-   ```bash
-   pnpm build
-   pnpm mcp:list-tools
-   ```
+## Try it in 60 seconds
 
-7. Review deployment proof: [`deploy/railway.md`](deploy/railway.md) (Railway — live, browser-renderable) and [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md) (Alibaba FC — live, verify by curl).
-8. Read the build log: [Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit).
-9. Watch the demo: [https://youtu.be/P254DPj-Mgw](https://youtu.be/P254DPj-Mgw).
+Open **<https://neverasktwice.dev/chat>** in a WebMCP-capable browser and watch
+the **WebMCP Action Trace** panel while you ask:
 
-## The measurable result
+**1 — Read.** The prompt used verbatim in the frozen counterfactual:
 
-Run:
+```
+What does support already know about our setup?
+```
+
+Trace: `CALLED → SCOPED → RETURNED`. The agent answers with Gold SLA,
+Salesforce, Priya — without asking you for any of it.
+Run the same prompt at `/chat?webmcp=off` and the agent asks you to paste it in.
+
+**2 — Confirmed correction.** A mutation a human must approve:
+
+```
+Priya has left the account. Our escalation contact is now Marcus Chen — please update it.
+```
+
+Trace: `CALLED → CONFIRMATION_REQUESTED →` *(you click Confirm and persist)* `→ EXECUTED → OBSERVED`.
+Cancel instead, and nothing is written. After committing, ask prompt 1 again —
+the old contact is gone and the new one is returned.
+
+## Evidence
+
+Each gate is a frozen document with its raw log beside it. None of it is
+reconstructed after the fact.
+
+| Gate | Claim | Document | Raw |
+|---|---|---|---|
+| G1 | A real browser discovered and executed the tool natively in Chrome | [`docs/webmcp-spike-evidence.md`](docs/webmcp-spike-evidence.md) | [`webmcp-live-verification.jsonl`](docs/webmcp-live-verification.jsonl) |
+| G2 | **Counterfactual** — WebMCP ON vs OFF changes the user journey | [`docs/webmcp-counterfactual-comparison.md`](docs/webmcp-counterfactual-comparison.md) | [`webmcp-counterfactual-preconditions.jsonl`](docs/webmcp-counterfactual-preconditions.jsonl) |
+| G3 | **Security** — the agent's reach is mechanically tenant-bound | [`docs/webmcp-security-g3.md`](docs/webmcp-security-g3.md) | [`webmcp-security-g3-negative-tests.jsonl`](docs/webmcp-security-g3-negative-tests.jsonl) |
+| G4 | **Mutation** — confirmed, atomic, reread before success | [`docs/webmcp-mutation-g4.md`](docs/webmcp-mutation-g4.md) | [`webmcp-mutation-g4-negative-tests.jsonl`](docs/webmcp-mutation-g4-negative-tests.jsonl) |
+
+Each document states its own limits. G2 is one pair, one model, one question,
+and it does not claim browser agents *cannot* reach this data without WebMCP.
+G4 does not claim prompt-injection immunity.
+
+## Provenance
+
+This is an **Existing Project, meaningfully extended**. The boundary is
+mechanical, not asserted:
+
+- Pre-challenge baseline: `c2997996` — tagged `baseline-pre-webmcp`, **zero** WebMCP files.
+- All WebMCP work: 2026-09-01 → 2026-09-03.
+
+```bash
+git ls-tree -r baseline-pre-webmcp --name-only | grep -c webmcp   # 0
+git log --oneline baseline-pre-webmcp..HEAD                       # the challenge window
+```
+
+Full table — baseline, challenge additions, deployed code and tree, deployment
+id, final commit: **[`docs/webmcp-build-period.md`](docs/webmcp-build-period.md)**.
+
+Third-party assets: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+## Run it yourself
+
+```bash
+pnpm install
+pnpm vitest run tests/webmcp-escalation-contact-g4.test.ts \
+                tests/webmcp-security-g3.test.ts \
+                tests/webmcp-support-context.test.ts   # 57 tests, no secrets needed
+```
+
+These are the deterministic security and state-transition tests behind G3 and
+G4 — selector rejection, cross-origin rejection, missing confirmation, rollback
+under injected failure, retry, and cross-visitor isolation. They need no
+database and no API key.
+
+Full local setup (Postgres, migrations, live Qwen path) is in
+[Local development](#local-development) below.
+
+---
+
+# Pre-existing system — historical background
+
+> Everything in this section predates the WebMCP Challenge and is **not**
+> submitted as challenge work. It is the system the challenge work extends.
+
+Never Ask Twice was built for the **Qwen Cloud Global AI Hackathon — MemoryAgent
+track** (July 2026), where it was submitted as a B2B support memory agent.
+
+**Support that remembers.** Customers don't want a smarter chatbot if they still
+have to repeat their SLA, setup, open issue, and escalation contact every time
+they come back.
+
+The demo agent is **Nat**, powered by **NATE** — the Never Ask Twice Engine — a
+scoped memory layer that turns support conversations into durable, auditable
+customer context.
+
+## What makes it a MemoryAgent
+
+- **Working memory** — current-session context usable before session-close distillation.
+- **Episodic memory** — raw support events with Qwen embeddings and provenance.
+- **Semantic memory** — distilled customer facts with confidence, validity windows, and source links.
+- **Forgetting policy** — TTL expiry, supersession, stale-memory exclusion, audit-safe provenance.
+- **Budgeted recall** — relevant memories only, capped to a strict context budget.
+- **stdio MCP surface** — four memory tools for agent interoperability. *(Not WebMCP.)*
+
+This is not transcript logging. It is structured memory with retrieval
+discipline, provenance, forgetting, and measurable cross-session improvement.
+
+## The deterministic eval harness
 
 ```bash
 pnpm eval
 ```
 
-Expected deterministic fixture output:
+Expected fixture output:
 
 ```text
 memory-on re-ask rate: 0.00
@@ -88,45 +172,58 @@ memory-off recall accuracy: 0.00
 re-ask rate: 0.00 (memory) vs 1.00 (no-memory)
 ```
 
-The evaluation path is intentionally deterministic for reproducible scoring. It uses fixed synthetic fixtures and a fake Qwen client. The live API path uses Qwen Cloud when `DASHSCOPE_API_KEY` is configured.
+**Read this as a fixture assertion, not a measurement.** The harness is
+intentionally deterministic for reproducible scoring: fixed synthetic fixtures
+and a fake Qwen client. It is a regression guard on the memory policy, not a
+live benchmark, and it is unrelated to the WebMCP claims above. Details:
+[`docs/evaluation.md`](docs/evaluation.md).
 
-## What makes it a MemoryAgent
+## Prior-period status
 
-Never Ask Twice implements explicit memory tiers:
-
-- **Working memory** — current-session context usable before session-close distillation.
-- **Episodic memory** — raw support events with Qwen embeddings and provenance.
-- **Semantic memory** — distilled customer facts with confidence, validity windows, and source links.
-- **Forgetting policy** — TTL expiry, supersession, stale-memory exclusion, and audit-safe provenance.
-- **Budgeted recall** — relevant memories only, capped to a strict context budget.
-- **MCP surface** — memory tools exposed for agent interoperability.
-
-This is not transcript logging. It is structured memory with retrieval discipline, provenance, forgetting, and measurable cross-session improvement.
+|Area|Status|Notes|
+|---|---|---|
+|Public clean-room repo|Done|Synthetic data only; boundary scan included.|
+|Memory service|Done|Working, episodic, semantic, forgetting, budgeted recall.|
+|stdio MCP surface|Done|Four memory tools via `pnpm mcp:list-tools`.|
+|Qwen-backed live path|Done|`/health` reports `mode: "qwen-live"`.|
+|Railway deployment|Live — judge-clickable|[`neverasktwice.dev`](https://neverasktwice.dev/chat) renders in a browser; re-verified 2026-09-02. See [`deploy/railway.md`](deploy/railway.md).|
+|Alibaba FC deployment|Live — verify by curl|`curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Alibaba forces `Content-Disposition: attachment` on the free `*.fcapp.run` subdomain, so a browser downloads instead of rendering — platform policy, not a broken deploy. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
+|Qwen-hackathon demo video|Done|[Watch](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario. *(Pre-WebMCP.)*|
+|Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
 
 ## Architecture
 
 ```text
-Customer chat / MCP
-        |
-        v
-Hono API (same code, two live deploy targets:
-           Railway - browser | Alibaba FC - curl)
-        |
-        v
-MemoryService
-  |-- working memory: current-session facts
-  |-- episodic memory: turn events + Qwen embeddings
-  |-- semantic memory: distilled durable facts
-  |-- forgetting: TTL + supersession + scoped recall
-        |
-        +--> Qwen Cloud via DashScope-compatible OpenAI API
-        +--> Neon Postgres + pgvector
-        +--> MCP stdio tools
+Browser agent (WebMCP)          Customer chat / stdio MCP
+        |                                |
+        v                                v
+  document.modelContext            Hono API
+  get_support_context      -->  /webmcp/support-context
+  update_escalation_contact -->  /webmcp/escalation-contact/{propose,commit}
+        |                                |
+        +--------> scope resolved server-side from signed visitor cookie
+                                         |
+                                         v
+                                  MemoryService
+                                    |-- working memory
+                                    |-- episodic memory  (+ Qwen embeddings)
+                                    |-- semantic memory
+                                    |-- forgetting: TTL + supersession
+                                         |
+                                         +--> Qwen Cloud (DashScope-compatible API)
+                                         +--> Postgres + pgvector
 ```
 
 Full diagram and component map: [`docs/architecture.md`](docs/architecture.md).
 
-## Getting started
+## Brand assets
+
+Logo files and usage rules: [`docs/assets/brand`](docs/assets/brand).
+Tagline: **Support that remembers.** Descriptor: **Enterprise Support MemoryAgent.**
+
+---
+
+# Local development
 
 ### 1. Clone and install
 
@@ -142,7 +239,8 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` and set your `DASHSCOPE_API_KEY` from DashScope for live Qwen-backed embeddings, distillation, and adjudication. The example is pre-filled for local Postgres on port 5433.
+Set `DASHSCOPE_API_KEY` for live Qwen-backed embeddings, distillation, and
+adjudication. The example is pre-filled for local Postgres on port 5433.
 
 ```env
 DATABASE_URL=postgresql://neverasktwice:neverasktwice@localhost:5433/neverasktwice
@@ -154,70 +252,53 @@ QWEN_EMBEDDING_DIM=1024
 MEMORY_TOKEN_BUDGET=1200
 ```
 
-Without `DASHSCOPE_API_KEY`, the API boots in local-safe mode. Local-safe mode uses zero-vector embeddings and empty distillation responses so the server can run without secrets; it does not perform real Qwen work. Use `pnpm eval` for deterministic local scoring without a key.
+Without `DASHSCOPE_API_KEY`, the API boots in local-safe mode: zero-vector
+embeddings and empty distillation responses so the server runs without secrets.
+It does not perform real Qwen work.
 
-### 3. Start Postgres
-
-```bash
-docker compose up -d
-```
-
-The local database binds to `localhost:5433` so it does not collide with other Postgres services on `5432`.
-
-### 4. Run migrations
+### 3–7. Database, eval, and server
 
 ```bash
+docker compose up -d   # Postgres on localhost:5433
 pnpm migrate
+pnpm eval              # deterministic fixture harness
+pnpm boundary-scan     # clean-room scan
+pnpm dev               # API on http://localhost:3000
 ```
 
-### 5. Run the eval harness
-
-```bash
-pnpm eval
-```
-
-### 6. Run the boundary scan
-
-```bash
-pnpm boundary-scan
-```
-
-### 7. Start the local API
-
-```bash
-pnpm dev
-```
-
-The API will be available at `http://localhost:3000` with endpoints:
+API endpoints:
 
 - `GET /health` — health and capability status.
+- `GET /webmcp/support-context` — WebMCP read surface (same-origin, cookie-scoped).
+- `POST /webmcp/escalation-contact/propose` · `/commit` — WebMCP confirmed mutation.
 - `POST /turn` — append a customer/agent turn.
-- `POST /sessions/:id/close` — close a session and distill episodic memory into semantic memory.
+- `POST /sessions/:id/close` — close a session and distill episodic → semantic.
 - `POST /recall` — recall a bounded memory bundle.
 
-### 8. Run the MCP server
+### 8. Run the stdio MCP server
 
 ```bash
 pnpm build
 node dist/src/mcp/server.js
 ```
 
-The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_session`, and `forget`.
+Exposes `recall_memory`, `write_memory`, `distill_session`, and `forget`.
 
 ## Project structure
 
-- `apps/api` — Hono API, local server, and Function Compute handler. Deploy-target-agnostic; currently live on Alibaba FC.
+- `apps/api` — Hono API, local server, FC handler, and the `/chat` UI.
+- `apps/api/src/webmcp` — **WebMCP surface**: support-context read, escalation-contact mutation, scope resolution.
 - `src/agent` — deterministic support-agent policy used by the eval harness.
-- `src/contracts.ts` — memory predicate enum, Zod contracts, and shared types.
+- `src/contracts.ts` — memory predicate enum, Zod contracts, shared types.
 - `src/db` — Drizzle schema and SQL migration string.
-- `src/memory` — memory service, stores, retrieval, supersession, and forgetting behavior.
+- `src/memory` — memory service, stores, retrieval, supersession, forgetting.
 - `src/mcp` — stdio MCP surface over the shared memory service.
 - `src/qwen` — single Qwen Cloud client module.
-- `src/testing` — deterministic fake Qwen client for the eval harness.
-- `eval` — frozen three-session scenario, ground truth, expected output, and runner.
-- `scripts` — boundary scan, migration, MCP list-tools, and demo script checks.
-- `docs` — judge-facing architecture, memory model, evaluation, and forgetting documentation.
-- `deploy` — Railway deployment proof (live, browser-renderable) and Alibaba Function Compute deployment proof (live, verify by curl).
+- `src/testing` — deterministic fake Qwen client.
+- `eval` — frozen three-session scenario, ground truth, expected output, runner.
+- `scripts` — boundary scan, migration, MCP list-tools, WebMCP security evidence.
+- `docs` — architecture, memory model, evaluation, forgetting, and all WebMCP evidence.
+- `deploy` — Railway and Alibaba FC deployment proofs.
 
 ## Key commands
 
@@ -225,20 +306,23 @@ The MCP server exposes four tools: `recall_memory`, `write_memory`, `distill_ses
 |---|---|
 |`pnpm install`|Install dependencies|
 |`pnpm build`|Build the project|
-|`pnpm lint`|Run TypeScript type check|
-|`pnpm test`|Run the test suite|
-|`pnpm eval`|Run the deterministic memory ON/OFF eval harness|
+|`pnpm lint`|TypeScript type check|
+|`pnpm test`|Full test suite|
+|`pnpm eval`|Deterministic memory ON/OFF fixture harness|
 |`pnpm migrate`|Run database migrations|
-|`pnpm boundary-scan`|Run the clean-room boundary scan|
-|`pnpm mcp:list-tools`|List the MCP tools|
+|`pnpm boundary-scan`|Clean-room boundary scan|
+|`pnpm mcp:list-tools`|List the stdio MCP tools|
 |`pnpm demo:script-check`|Verify demo fixtures are aligned|
 
 ## Security and clean-room boundary
 
-Never Ask Twice uses synthetic data only. Do not commit real customer data, secrets, `.env` files, or private platform identifiers. The repository includes a boundary scan to fail on known forbidden tokens and a local-safe mode so judges can run the server without secrets.
+Never Ask Twice uses synthetic data only. Do not commit real customer data,
+secrets, `.env` files, or private platform identifiers. The repository includes
+a boundary scan that fails on known forbidden tokens, and a local-safe mode so
+judges can run the server without secrets.
 
-See [`SECURITY.md`](SECURITY.md).
+See [`SECURITY.md`](SECURITY.md) and [`docs/webmcp-security-g3.md`](docs/webmcp-security-g3.md).
 
 ## License
 
-Apache-2.0
+Apache-2.0 — see [`LICENSE`](LICENSE). Third-party notices: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
