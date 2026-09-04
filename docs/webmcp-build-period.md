@@ -34,9 +34,26 @@ between 2026-09-01 and 2026-09-03.
 | **Deployed WebMCP application code** | `c293e14cd5400d7bf16e5c5aef13def3a71b905d` | 2026-09-03T06:36:19-04:00 | The code running at the live URL |
 | **Deployed tree** | `5569cacaa90bf8365e6c94fbb150362bf5b9ff01` | — | Tree object of `c293e14`; identifies deployed content independent of commit metadata |
 | Railway deployment | `af126f44…` | — | Platform deployment id for the live release. Sourced from the Railway console, not from git. |
-| **Final judge-visible commit** | _set at freeze_ | — | Docs-only merge to `main` + submission tag |
+| **Final judge-visible revision** | tag **`webmcp-submission-final`** | 2026-09-04 | The frozen submission revision on `main`. Docs-only above `c293e14`; contains no application-code change. |
+| Submitted demo video | <https://youtu.be/YggGztPaWpk> | uploaded 2026-09-03T20:11:43-07:00 | 2:42, public, `playabilityStatus: OK` verified logged out |
 
-The final row is filled in at freeze. Everything above it is already immutable.
+A commit cannot cite its own hash, so the final row names the **tag** rather than
+the SHA it points at. Resolve it with `git rev-parse webmcp-submission-final^{commit}`.
+Everything above this row was already immutable before the freeze.
+
+## Submission freeze
+
+| | |
+|---|---|
+| Frozen at | 2026-09-04, before the 01:00 PT deadline |
+| Deadline | 2026-09-04 01:00 PT — extended 12h from 2026-09-03 13:00 PT for an upstream outage |
+| Repository | public, Apache-2.0 detected at top level, verified unauthenticated |
+| Live URL | <https://neverasktwice.dev/chat> — `/health` reports `mode: "qwen-live"` |
+| Verification | typecheck PASS · full suite 99 passed / 19 files · boundary scan clean · gitleaks clean |
+
+GitHub Actions is disabled on this repository, so no CI run exists for the frozen
+revision. The verification row above was produced locally against that exact
+revision and is the substitute record.
 
 ## Baseline predates the challenge
 

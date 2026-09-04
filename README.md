@@ -9,8 +9,11 @@
 ![Entry](https://img.shields.io/badge/Entry-Existing%20project%2C%20extended-purple)
 ![Runtime](https://img.shields.io/badge/Runtime-Node.js%2020-green)
 ![Live](https://img.shields.io/badge/Live-neverasktwice.dev-brightgreen)
+[![Demo](https://img.shields.io/badge/Demo-2%3A42%20video-red)](https://youtu.be/YggGztPaWpk)
 
 **Live:** **<https://neverasktwice.dev/chat>** — renders in any browser. WebMCP tools register automatically in a WebMCP-capable browser. Add `?webmcp=off` to the same URL for the control condition.
+
+**Demo (2:42):** **<https://youtu.be/YggGztPaWpk>** — *Never Ask Twice — The Website Already Knows.* Real browser, real WebMCP invocation, no scripted footage.
 
 ---
 
@@ -188,7 +191,7 @@ live benchmark, and it is unrelated to the WebMCP claims above. Details:
 |Qwen-backed live path|Done|`/health` reports `mode: "qwen-live"`.|
 |Railway deployment|Live — judge-clickable|[`neverasktwice.dev`](https://neverasktwice.dev/chat) renders in a browser; re-verified 2026-09-02. See [`deploy/railway.md`](deploy/railway.md).|
 |Alibaba FC deployment|Live — verify by curl|`curl https://never-awice-api-kvsvpczulb.us-east-1.fcapp.run/health`. Alibaba forces `Content-Disposition: attachment` on the free `*.fcapp.run` subdomain, so a browser downloads instead of rendering — platform policy, not a broken deploy. See [`deploy/alibaba-fc.md`](deploy/alibaba-fc.md).|
-|Qwen-hackathon demo video|Done|[Watch](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario. *(Pre-WebMCP.)*|
+|Qwen-hackathon demo video|Done — **superseded**|[Watch](https://youtu.be/P254DPj-Mgw) — frozen Acme scenario, July 2026. **This is not the WebMCP Challenge video.** The challenge demo is [above](#never-ask-twice).|
 |Build log|Done|[Building customer support memory that survives an audit](https://marcellelabs.io/insights/building-customer-support-memory-survives-audit)|
 
 ## Architecture
